@@ -56,8 +56,8 @@ Monorepo (pnpm): `packages/extension`, `packages/cli`, `packages/shared` (record
 ## 5. Component: Chrome Extension (capture + relay)
 
 ### 5.1 Recording UX
-- Side panel: task-name field, start/stop button, live step counter, privileged-page pause indicator.
-- One recording session ⇒ one recording file ⇒ one skill.
+- Side panel: task-name field, start/stop button, live step counter, privileged-page pause indicator, relay pairing/connection status.
+- **One recording session ⇒ one recording file ⇒ one segment; a new skill is its first segment.** The recording root carries `x-bskill.segment: { id, parentSkill: <slug|null>, recordedAt }` (`parentSkill: null` for a new skill). This keeps the schema segment-shaped so post-v1 rescue mode (§11) is additive, not a migration. v1 is single-segment only: every consumer (distill, run, write-back, evals) assumes one segment and MUST error loudly on multi-segment input (non-null `parentSkill` reaching v1 distill, >1 recording under `assets/`, or an unrecognized `segments` array) — a guard, never silent segment-dropping. A skill-level `bskill-segments` metadata list is reserved (documented unstable, never emitted) until rescue mode defines merge semantics.
 
 ### 5.2 Capture
 - Content scripts with capture-phase listeners: `click`, `input`/`change`, `keydown`, `scroll`, `select`; `chrome.webNavigation` for navigations. MAIN-world injection where isolated-world access is insufficient (e.g., shadow DOM internals).
@@ -65,14 +65,16 @@ Monorepo (pnpm): `packages/extension`, `packages/cli`, `packages/shared` (record
 - **Per-step enrichment via `chrome.debugger`** (attached only while recording): `Page.captureScreenshot`, pruned `Accessibility.getPartialAXTree` around the target, page URL, timestamp.
 - **Output:** `@puppeteer/replay` UserFlow JSON extended with an `x-bskill` namespace per step (screenshot ref, AX context, timing). Screenshots stored alongside as files referenced by the JSON. The file remains importable by Chrome DevTools Recorder and Puppeteer replay.
 - Keystroke coalescing: sequences of `keydown`/`input` on the same field collapse to one `change` step with the final value (matching Recorder semantics); password-type inputs record a `{secret}` placeholder, never the value.
+- **Capture-time redaction (secrets must never touch disk unredacted):** secret detection runs in the extension BEFORE `recording.json` / screenshots are written — URL query params matching token/key patterns, typed values in likely-secret fields, and card-shaped values are redacted to placeholders at capture, and screenshot regions over redacted fields are masked. This is required because `recording.json` is immutable evidence (§7): a secret persisted there at capture time could never be scrubbed later. `distill` runs a second-pass net for anything the capture heuristic missed. Both passes are validated by the adversarial eval fixtures (§10).
 
-### 5.3 CDP Relay
-- Extension hosts a local WebSocket CDP endpoint (Playwright-MCP-bridge pattern) proxying to tabs via `chrome.debugger`. `replay.ts` connects with Playwright `connectOverCDP` using `CHROME_CDP_URL` (default `ws://localhost:<port>`; port configurable).
-- Relay accepts connections from localhost only, gated by a session token displayed in the side panel and passed by the CLI.
-- Scripts are decoupled from the connection method: any CDP endpoint works (relay, dedicated debug-profile Chrome, headless CI Chromium), which is what makes skills runnable outside the user's machine too.
+### 5.3 CDP Relay (direction corrected)
+- **The CLI hosts the local WebSocket endpoint (`bskill relay`); the extension connects OUT to it as a client and bridges to tabs via `chrome.debugger`.** This inverts the naive "extension hosts a server" reading — MV3 has no server-socket API, so the extension cannot listen. This is the actual Playwright-MCP extension-mode pattern. `replay.ts` connects with Playwright `connectOverCDP` using `CHROME_CDP_URL` (default `ws://localhost:<port>`; port configurable), served by the running `bskill relay` process.
+- **Bridge implementation:** adapt Playwright-MCP's extension-mode CDP bridge (which synthesizes browser-level CDP semantics — `Browser.getVersion`, Target domain, session routing — over `chrome.debugger`'s tab-scoped attach model) behind bskill's own interface so it stays swappable. This is the single hardest piece of infra and is validated in M1.
+- **Auth (two-party):** localhost-only bind. First pairing is a one-time human confirmation in the side panel that mints a persisted token. The extension pins that token and refuses to connect to any local endpoint that can't prove knowledge of it (defense against a squatting process on the port); CDP consumers (replay scripts) present the same token. Thereafter the extension auto-reconnects when the endpoint appears — agent-invoked `bskill run` needs no human present. Per-run human confirmation is reserved for `destructive` steps (§6.2 gate), not for connections.
+- Scripts stay decoupled from the connection method: any CDP endpoint works (relay, dedicated debug-profile Chrome, headless CI Chromium) — but the endpoint exists only while a `bskill relay` (or debug-profile Chrome / CI Chromium) is running.
 
 ### 5.4 MV3 constraints
-- Service-worker keep-alive during active recording/replay only (open WS port + debugger session + heartbeat `sendCommand`); fully idle otherwise.
+- Service-worker keep-alive during active recording/replay (hold the outbound WS + debugger session + heartbeat `sendCommand`). Otherwise idle EXCEPT a lightweight `chrome.alarms`-based endpoint probe (~30s granularity) that lets the extension auto-reconnect when `bskill relay` appears; `bskill run` startup may wait up to one probe interval for attach (the fail-fast "relay unreachable" message, §8, covers the timeout).
 - The "started debugging this browser" banner appears whenever `chrome.debugger` is attached. Documented in README with the `--silent-debugger-extension-api` mitigation. Not otherwise suppressed.
 - Recording pauses (with indicator) on privileged pages (`chrome://`, Web Store); debugger detach mid-recording saves a partial recording.
 
@@ -83,7 +85,8 @@ LLM pass over the enriched recording producing a skill directory in `~/.browser-
 1. **Intent inference** — task purpose and a keyword-rich, third-person `description` ("what it does and when to use it").
 2. **Semantic narrative** — per-step NL description with selector rationale and observed gotchas → SKILL.md body (kept <500 lines) and `references/walkthrough.md` (full detail, selector stacks, screenshots referenced).
 3. **Parameterization** — demo-typed values detected and promoted to a typed input schema (`metadata` + documented in SKILL.md); step values rewritten as `{placeholders}`. Secrets are always parameters.
-4. **Script generation** — `scripts/replay.ts`: parameterized Playwright-over-CDP script; inputs as CLI args; every step tries its selector stack in order with per-step timeout. Judgment-dependent steps (extraction, conditional branches, wait-for-human) are emitted as structured `agent:` prose steps in SKILL.md, never frozen into code.
+4. **Effect tagging** — every step is assigned an `effect` label: `readonly` (observes only), `mutating` (changes server state, broadly reversible), or `destructive` (irreversible or high-consequence — delete, send, submit, pay). The tag is written into the step's `x-bskill` namespace, mirrored in `walkthrough.md`, and carried into `replay.ts` step metadata (single source of truth for both consumption modes). **Rounding rule: when the distiller is uncertain, it MUST round UP toward `destructive`** — under-tagging is the failure the eval rubric (§10) explicitly guards against; over-tagging only costs a confirmation prompt.
+5. **Script generation** — `scripts/replay.ts`: parameterized Playwright-over-CDP script; inputs as CLI args; every step tries its selector stack in order with per-step timeout. Judgment-dependent steps (extraction, conditional branches, wait-for-human) are emitted as structured `agent:` prose steps in SKILL.md, never frozen into code.
 
 Generated `SKILL.md` frontmatter (core spec only):
 
@@ -106,12 +109,18 @@ Executes the ladder of determinism:
 1. **Tier 1** — run `replay.ts` (deterministic; zero LLM).
 2. **Tier 2** — per-step fallback selector stack (already inside the script).
 3. **Tier 3** — on step failure: capture current page snapshot (screenshot + aria snapshot), hand the failing step + SKILL.md semantics to the LLM backend to complete that step only; on success, continue the run.
-4. **Write-back** — successful heals update the step's selector stack / script code, bump `metadata.version`, and append an entry to `references/CHANGELOG.md`. `assets/recording.json` is immutable evidence and never modified.
+4. **Write-back (quarantine, then promote-after-proof — a heal must earn trust before it edits the canonical shared skill):** a successful heal writes to a **quarantined candidate** fix, used for the remainder of THAT run but NOT immediately promoted to the canonical skill in `~/.browser-skills/`. The candidate becomes canonical only after it earns trust: N independent confirmations (clean re-runs) or explicit `bskill promote` / user confirmation. This closes the poisoning path — a wrong-but-passing one-off heal (right-looking selector, wrong element) shared across every project that installed the skill never becomes permanent truth on first success. Promotion bumps `metadata.version` and records the candidate→promoted transition in `references/CHANGELOG.md`. `assets/recording.json` is immutable evidence and never modified. (Destructive/mutating steps don't auto-heal at all per the safety gate above, so quarantine covers the `readonly` and safe-`mutating` cases.)
 - Failure report (step index, screenshot path, selectors tried, page URL) is emitted as structured JSON on stderr exit — exactly what a consuming agent needs to take over manually.
 
+**Replay safety gate (consumes `effect` tags from §6.1):**
+- A step tagged `destructive` requires explicit confirmation before execution: `--confirm-destructive` (unattended/agent invocation) or an interactive prompt (human invocation). Without it, `run` halts at that step and emits the failure report.
+- **Tier-3 heal must never auto-retry a `mutating`-or-`destructive` step that may have already partially executed** (e.g. the click landed but the navigation assertion failed). On failure of such a step, heal STOPS and emits the failure report rather than re-dispatching — this is the guard against double-sends / double-charges. `readonly` steps heal freely.
+- The gate is a load-bearing safety control; its behavior is a tested invariant (§10).
+
 ### 6.3 LLM backend (pluggable)
-- Single interface: `complete(prompt, jsonSchema) → validated object` (one retry with validation error appended).
+- Single interface: `complete(prompt, jsonSchema) → validated object`.
 - Adapters: **agent-cli** (default; autodetects `claude`, `codex`, `gemini` binaries, runs headless/non-interactive) and **api** (direct Anthropic API, opt-in via `BSKILL_API_KEY` / config file).
+- **agent-cli structured-output hardening (the distiller is the product, and CLIs emit free text, not schema-constrained JSON):** the adapter does robust extraction — scan for fenced code blocks, take the first parse-valid JSON object, tolerate leading/trailing prose — followed by a schema-repair reprompt on validation failure. Retry budget is **higher for CLI backends (3) than for the api backend (1)**, because text-mode structure is inherently less reliable than native JSON/tool-use mode. The api adapter uses native structured output where available. Extraction reliability is one of the dimensions the eval suite (§10) scores.
 - Config: `~/.browser-skills/config.json` (backend, model, relay port).
 
 ### 6.4 `bskill install [<skill>|--all] [--project <dir>|--user]`
@@ -128,8 +137,8 @@ Symlinks (copies where symlinks fail) from the global library into `.claude/skil
 │   ├── walkthrough.md     # full step narrative, selector stacks, gotchas
 │   └── CHANGELOG.md       # heal write-back history
 └── assets/
-    ├── recording.json     # raw extended UserFlow JSON (immutable evidence)
-    └── screenshots/       # per-step captures
+    ├── recording.json     # extended UserFlow JSON — immutable AFTER capture-time redaction (§5.2), never raw-with-secrets
+    └── screenshots/       # per-step captures (secret regions masked at capture)
 ```
 
 Consumption modes (documented in each SKILL.md):
@@ -142,24 +151,30 @@ Consumption modes (documented in each SKILL.md):
 |---|---|
 | Privileged page during recording | Pause capture, show indicator, resume on return |
 | Debugger detach / crash mid-recording | Persist partial recording; distill offers stub skill |
-| LLM output fails schema validation | One retry with validation error; then stub skill (raw recording + auto-summary) — demonstrated work is never lost |
+| LLM output fails schema validation | Retry with validation error appended (budget: 3 for agent-cli, 1 for api — §6.3); then stub skill (raw recording + auto-summary) — demonstrated work is never lost |
 | Replay step exhausts selectors + heal | Structured failure report (JSON): step, screenshot, selectors tried, URL |
-| Heal write-back | Never touches `assets/`; version bump + changelog entry; revert = git or previous version note |
-| Relay unreachable | `run` fails fast with setup instructions (open side panel / start relay) |
+| Destructive step without confirmation | `run` halts before the step; failure report + instruction to pass `--confirm-destructive` (§6.2 gate) |
+| Heal on mutating/destructive step | Heal does NOT re-execute; STOPS and emits failure report (guard against double-execution — §6.2) |
+| Heal write-back | Writes a quarantined candidate (used for that run); promoted to canonical only after N clean confirmations or explicit `bskill promote`; never touches `assets/`; version bump + changelog on promotion (§6.2) |
+| Relay unreachable | `run` fails fast with setup instructions (start `bskill relay`, open side panel to pair) |
+| Multi-segment recording reaches v1 consumer | Error loudly ("recorded with a newer bskill"); never silently drop segments (§5.1) |
 
 ## 9. Security & Privacy
 
 - Recording is explicit and visibly indicated; no background capture.
-- Password fields never recorded as values (placeholder parameters only); a redaction pass in `distill` flags other likely secrets (tokens in URLs, credit-card-shaped values) and parameterizes them.
-- Relay: localhost-only, session-token-gated.
+- Password fields never recorded as values (placeholder parameters only). **Secret redaction happens at capture time in the extension** (§5.2) — URL tokens, likely-secret typed values, card-shaped values, and screenshot regions are redacted BEFORE anything is written to disk, so `recording.json` is never raw-with-secrets. `distill` runs a second-pass net. Enforced by adversarial eval fixtures, not just asserted (§10) — the leak surface is real: an un-redacted secret would land in `recording.json` / `SKILL.md` and then be symlinked into project dirs.
+- Relay: localhost-only, two-party token auth (§5.3) — CLI hosts, extension pins the pairing token and rejects unknown endpoints, CDP consumers present the same token.
 - Skills inherit auth from the browser profile; no credentials in any artifact.
 - Recordings/screenshots stay local; the only data leaving the machine is what the chosen LLM backend sends (documented; agent-cli backend inherits the user's existing agent trust decisions).
 
 ## 10. Testing Strategy
 
-- **Unit:** selector-stack computation against fixture DOMs (shadow DOM, iframes, no-id elements); UserFlow JSON schema conformance; distiller prompt-output validation with mocked LLM (golden recordings → expected skill shape); parameterization detection cases.
-- **Integration:** record → distill → replay round-trip against local fixture pages (a fake "invoice app") in CI: headless Chromium + `--load-extension`, scripted synthetic input, mocked LLM. Heal path: mutate the fixture page's selectors between record and replay, assert tier-3 fires and write-back bumps the version.
-- **Conformance:** generated skills validated with `skills-ref validate` in CI.
+- **Unit:** selector-stack computation against fixture DOMs (shadow DOM, iframes, no-id elements); UserFlow JSON schema conformance; distiller prompt-output validation with mocked LLM (golden recordings → expected skill shape); parameterization detection cases; keystroke-coalescing (multi-`keydown` → one `change` with final value); agent-cli JSON extraction (fenced blocks, leading/trailing prose, schema-repair reprompt); multi-segment guard (each consumer errors, never drops).
+- **Integration:** record → distill → replay round-trip against local fixture pages (a fake "invoice app") in CI: headless Chromium + `--load-extension`, scripted synthetic input, mocked LLM. Heal path: mutate the fixture page's selectors between record and replay, assert tier-3 fires and write-back bumps the version. Privileged-page pause/resume; debugger-detach-mid-recording → partial save; `install` symlink + copy-on-symlink-fail; the M1 template output passes `skills-ref validate`.
+- **Replay safety gate (dedicated suite — safety-critical invariant, §6.2):** (1) a `destructive`-tagged step halts `run` without `--confirm-destructive` and proceeds with it; (2) a heal on a `mutating`/`destructive` step that may have partially executed STOPS and emits the failure report instead of re-dispatching; (3) a `readonly` step heals freely. Requires destructive-tagged fixtures (reused as eval golden fixtures).
+- **Relay (E2E):** two-party pairing/token flow — extension rejects an endpoint without the pinned token; a paired extension auto-reconnects via the alarms probe.
+- **Conformance:** generated skills validated with `skills-ref validate` in CI (from M1 onward — the zero-LLM template output must already conform).
+- **LLM evals (v1):** mocked-LLM tests cover plumbing only; distiller/healer output quality gets its own eval suite. 5–10 golden recording fixtures run through the *real* distiller, scored against a rubric: required parameters extracted, **secrets parameterized (adversarial fixtures: tokens-in-URLs, API-key-shaped strings in text fields, card-shaped values — assert NO secret survives in ANY output file)**, effect tags correct (destructive steps must never be under-tagged — this feeds the replay safety gate), frontmatter valid, steps complete. 3–5 heal scenarios evaluated the same way. Runs on-demand and on any prompt change (not every CI push — token cost); results are the benchmark for future prompt iteration. Requires an API key in CI secrets or manual runs.
 - **Manual acceptance (v1 gate):** record a real task on a live authenticated site, distill with a real agent backend, replay successfully via the relay in day-to-day Chrome.
 
 ## 11. Out of Scope for v1 (explicit follow-ups)
@@ -174,6 +189,42 @@ Consumption modes (documented in each SKILL.md):
 
 1. A user can record a multi-step task on an authenticated site and get a valid Agent Skill directory without hand-editing.
 2. `bskill run` replays that skill deterministically against their real Chrome via the relay.
-3. Breaking a selector on the target page triggers a heal that completes the run AND persists a fix (version bump + changelog).
+3. Breaking a selector on the target page triggers a heal that completes the run AND persists a quarantined candidate fix that is promoted to canonical after proof (version bump + changelog on promotion — §6.2).
 4. `bskill install` makes the skill discoverable in both Claude Code and one non-Anthropic agent (e.g., Codex CLI), and that agent can execute it in script mode.
 5. All generated skills pass `skills-ref validate`.
+
+## 13. Distribution
+
+- **CLI:** npm package (`npx bskill` / `npm i -g bskill`), published from a GitHub Actions release workflow (tag → build → `npm publish --provenance`).
+- **Extension:** v1 ships as an unpacked/developer-mode load from a GitHub Release zip, documented in the README. Chrome Web Store submission is a deliberate fast-follow, NOT a v1 blocker — the `debugger` permission invites review friction, so it must not gate v1. **Known v1 limitation (README):** unpacked extensions show a startup nag and can be disabled on managed/enterprise profiles — the exact environment where internal tools live. Acceptable for v1's supported audience (dev-mode users, builder's own machine); revisit with the Web Store submission before promoting to non-dev users.
+- **Repo/CI:** monorepo (pnpm) with CI running typecheck, unit + integration (headless Chromium `--load-extension`), the replay-safety-gate suite, `skills-ref validate` conformance, and the release workflow. LLM evals run on-demand and on prompt-change only (token cost), not per-push.
+
+## 14. Milestones (build order — Rescue-Ready Slice)
+
+Vertical-slice ordering that retires the riskiest unknowns first; R4 (full pipeline in v1) is unchanged, only sequenced. Each milestone has a falsifiable gate.
+
+1. **M1 — Vertical slice** (fixture "invoice app"): extension capture → segment-shaped UserFlow JSON → **zero-LLM** template distill (the §6.3 backend does NOT ship here) → relay (adapt Playwright-MCP's bridge) → `bskill run` replay. Minimal pairing (token mint, localhost bind). **Gate:** record once, replay successfully against the default Chrome profile *via the extension relay* (a debug-profile Chrome does not count — the relay is the risk being retired), and the generated directory passes `skills-ref validate`.
+2. **M2 — Semantic distiller + eval suite:** real LLM distillation (intent, narrative, parameterization, effect tags) with the hardened agent-cli adapter; golden-fixture evals built alongside the prompts. **Gate:** evals pass on 5–10 golden recordings, including destructive-tag recall and secret-redaction.
+3. **M3 — Heal + write-back + replay safety gate:** tier-3 agentic step completion, version bump + changelog; the safety gate consumes M2's effect tags. **Gate:** mutated fixture selectors heal and persist; a destructive-tagged step is never re-executed without confirmation (safety-gate suite green).
+4. **M4 — Install + distribution (publishable pipeline):** `bskill install`, npm publish, extension delivery, release CI, hardened two-party auth. **Gate:** fresh machine → working install from public artifacts, AND the installed skill executes in script mode from a non-Anthropic agent (Codex CLI or equivalent) — closing success criterion 4.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | not run (office-hours covered scope) |
+| Codex Review | `/codex review` | Independent 2nd opinion | 1 | issues_found | 14 raised; 2 folded as fixes, rest captured |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 8 findings, all folded into spec; 0 critical gaps remain |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | n/a (only UI is the extension side panel) |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | not run |
+
+Decisions folded into the spec this review: D11 effect-tag enum + rounding rule (§6.1); replay safety gate (§6.2); D12 relay bridge = adapt Playwright-MCP; D13 agent-cli JSON hardening + retry=3 (§6.3); D14 safety-gate test suite (§10); D15 adversarial redaction eval fixtures (§10); relay direction inversion + two-party auth (§5.3/§5.4); segment schema + multi-segment guard (§5.1); distribution (§13); milestones M1–M4 (§14).
+
+**CODEX:** raised 14 findings hunting what the multi-section review missed. Two were genuine new defects and were fixed in-spec: **D17** — capture-time redaction (the redaction promise contradicted the immutable-recording model; secrets are now scrubbed before disk write); **D18** — quarantine heal write-back (a first-success heal could silently poison the globally-shared skill; heals now earn promotion). The rest were captured in `TODOS.md` (environment-precondition contract, human/agent concurrency model, install copy-fallback reconciliation, relay robustness on SSO/MFA/iframe flows) or noted as accepted residual risk (see below).
+
+**CROSS-MODEL:** Both reviewers agree the safety boundary is the crux. Eng review put the trust on LLM-inferred effect tags with a round-up rule + heal-stop; Codex argued LLM tagging is the wrong place for a safety-critical control. Resolution: the residual risk is **accepted and documented** — without static analysis of the target app there is no non-LLM source of effect information, and the risk is mitigated in depth (round-up-when-uncertain, heal never re-runs a partial mutating step, quarantine-before-promote, and the eval suite scores destructive-tag recall as a release gate). If tag recall proves weak in the M2 evals, revisit before M3 ships.
+
+**VERDICT:** ENG CLEARED (PLAN) — architecture, tests, and safety controls locked; ready to implement M1. CEO and Design reviews not required for this change.
+
+**UNRESOLVED DECISIONS:**
+- Residual: safety gate trusts LLM effect tags (accepted this review; re-evaluate against M2 eval recall before M3).
