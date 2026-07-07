@@ -4,3 +4,4 @@ export { writeSkillDirectory } from "./write-skill";
 export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { defaultLibraryDir } from "./paths";
+export { gateStep, type GateDecision, type GateContext } from "./safety-gate";
