@@ -24,4 +24,12 @@ export interface RecStateMessage {
   recording: boolean;
 }
 
+/** background → side panel: a finished recording to save (Blob download in the
+ *  panel's window context — reliable filename, unlike a service-worker data URL). */
+export interface SavedRecordingMessage {
+  kind: "recording";
+  filename: string;
+  json: string;
+}
+
 export type ToBackground = CaptureMessage | PanelMessage;

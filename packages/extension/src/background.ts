@@ -5,7 +5,13 @@
  * active, and hands the finished recording to a download on stop.
  */
 import { RecordingSession } from "./session";
-import type { PanelMessage, CaptureMessage, StatusMessage, RecStateMessage } from "./messages";
+import type {
+  PanelMessage,
+  CaptureMessage,
+  StatusMessage,
+  RecStateMessage,
+  SavedRecordingMessage,
+} from "./messages";
 
 const session = new RecordingSession();
 
@@ -26,11 +32,15 @@ function pushStatus(): void {
   chrome.runtime.sendMessage(status()).catch(() => {});
 }
 
-function downloadRecording(recording: unknown, title: string): void {
-  const json = JSON.stringify(recording, null, 2);
-  const dataUrl = "data:application/json;charset=utf-8," + encodeURIComponent(json);
+function saveRecording(recording: unknown, title: string): void {
   const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "recording";
-  chrome.downloads.download({ url: dataUrl, filename: `${slug}.recording.json`, saveAs: true });
+  const msg: SavedRecordingMessage = {
+    kind: "recording",
+    filename: `${slug}.recording.json`,
+    json: JSON.stringify(recording, null, 2),
+  };
+  // The side panel performs the actual Blob download (reliable filename).
+  chrome.runtime.sendMessage(msg).catch(() => {});
 }
 
 chrome.runtime.onMessage.addListener(
@@ -45,7 +55,7 @@ chrome.runtime.onMessage.addListener(
         if (session.isRecording) {
           const rec = session.stop();
           broadcastRecState(false);
-          downloadRecording(rec, rec.title);
+          saveRecording(rec, rec.title);
           pushStatus();
         }
         break;

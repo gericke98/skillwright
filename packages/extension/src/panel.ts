@@ -1,5 +1,16 @@
 /** Side panel controller — thin UI over the background worker's state. */
-import type { PanelMessage, StatusMessage } from "./messages";
+import type { PanelMessage, StatusMessage, SavedRecordingMessage } from "./messages";
+
+/** Save a finished recording as a file with a proper name (panel has a window). */
+function downloadRecording(msg: SavedRecordingMessage): void {
+  const blob = new Blob([msg.json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = msg.filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const taskName = document.getElementById("task-name") as HTMLInputElement;
 const toggle = document.getElementById("toggle") as HTMLButtonElement;
@@ -30,9 +41,10 @@ toggle.addEventListener("click", async () => {
   }
 });
 
-// Live status pushes from the background.
-chrome.runtime.onMessage.addListener((msg: StatusMessage) => {
+// Live status pushes + the finished-recording download from the background.
+chrome.runtime.onMessage.addListener((msg: StatusMessage | SavedRecordingMessage) => {
   if (msg?.kind === "status") render(msg);
+  else if (msg?.kind === "recording") downloadRecording(msg);
 });
 
 // Initial state.
