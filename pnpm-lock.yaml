@@ -28,6 +28,12 @@ importers:
         specifier: ^22.0.0
         version: 22.20.0
 
+  packages/extension:
+    dependencies:
+      '@bskill/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/fixture-app:
     devDependencies:
       '@types/node':
