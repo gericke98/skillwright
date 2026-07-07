@@ -1,5 +1,6 @@
 import type { Recording, Step } from "@bskill/shared";
 import { redactUrl } from "./redact";
+import { coalesceSteps } from "./coalesce";
 
 /**
  * Injected sources of nondeterminism so the session is unit-testable. In the
@@ -60,7 +61,7 @@ export class RecordingSession {
     this.active = false;
     return {
       title: this.title,
-      steps: this.steps,
+      steps: coalesceSteps(this.steps),
       "x-bskill": {
         version: 1,
         segment: { id: this.segmentId, parentSkill: null, recordedAt: this.recordedAt },
