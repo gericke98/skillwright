@@ -10,15 +10,30 @@ import { resolveElement } from "./dom-resolve";
 
 export type RelayStatus = "connecting" | "paired" | "rejected" | "closed" | "error";
 
-/** Expression returning the click point of `selector`, or null if not found. */
+/** Expression returning click point + diagnostics for `selector`, or {found:false}. */
 function coordsExpression(selector: string): string {
   return `(() => {
     const resolveElement = ${resolveElement.toString()};
     const el = resolveElement(${JSON.stringify(selector)}, document);
-    if (!el) return null;
+    if (!el) return { found: false };
     el.scrollIntoView({ block: "center", inline: "center" });
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const at = document.elementFromPoint(x, y);
+    return {
+      found: true, x, y,
+      dpr: window.devicePixelRatio,
+      hit: at === el || el.contains(at) || (at && at.contains(el)),
+      atPoint: at ? (at.tagName + "/" + (at.getAttribute("aria-label") || at.className || "")) : null,
+    };
+  })()`;
+}
+
+/** Expression: does `selector` still resolve to an element? (post-click check) */
+function existsExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    return !!resolveElement(${JSON.stringify(selector)}, document);
   })()`;
 }
 
@@ -53,13 +68,34 @@ interface PerformInput {
 async function performStep(tabId: number, cmd: PerformInput): Promise<{ ok: boolean; error?: string }> {
   try {
     if (cmd.action === "click") {
-      const coords = (await evaluate(tabId, coordsExpression(cmd.selector))) as
-        | { x: number; y: number }
-        | null;
-      if (!coords) return { ok: false, error: "element not found" };
-      const base = { x: coords.x, y: coords.y, button: "left" as const, buttons: 1, clickCount: 1 };
-      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", { type: "mousePressed", ...base });
-      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", { type: "mouseReleased", ...base });
+      const info = (await evaluate(tabId, coordsExpression(cmd.selector))) as {
+        found: boolean;
+        x?: number;
+        y?: number;
+        dpr?: number;
+        hit?: boolean;
+        atPoint?: string | null;
+      };
+      if (!info.found) return { ok: false, error: "element not found" };
+      const { x, y } = info as { x: number; y: number };
+      // Proper trusted-click sequence: move, press (button held), release (none held).
+      const send = (type: string, buttons: number) =>
+        chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", {
+          type,
+          x,
+          y,
+          button: "left",
+          buttons,
+          clickCount: 1,
+        });
+      await send("mouseMoved", 0);
+      await send("mousePressed", 1);
+      await send("mouseReleased", 0);
+      // Self-verify: for the delete flow, a working click removes the element.
+      const stillThere = (await evaluate(tabId, existsExpression(cmd.selector))) === true;
+      if (stillThere) {
+        return { ok: false, error: `clicked but element persists — diag ${JSON.stringify(info)}` };
+      }
       return { ok: true };
     }
     if (cmd.action === "change" || cmd.action === "input" || cmd.action === "select") {

@@ -43,9 +43,11 @@ export async function runSkillViaRelay(slug: string, opts: RelayRunOptions): Pro
   opts.onReady?.({ url, token, port });
 
   try {
+    const timeoutMs =
+      opts.extensionTimeoutMs ?? (Number(process.env.BSKILL_RELAY_TIMEOUT_MS) || 120_000);
     await withTimeout(
       relay.waitForExtension(),
-      opts.extensionTimeoutMs ?? 120_000,
+      timeoutMs,
       "the bskill extension did not connect — open the side panel and click Connect",
     );
     return await runSkill(steps, new RelayStepDriver(relay.transport), {
