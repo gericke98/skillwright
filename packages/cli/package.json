@@ -15,9 +15,11 @@
   },
   "dependencies": {
     "@bskill/shared": "workspace:*",
-    "playwright": "^1.61.1"
+    "playwright": "^1.61.1",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1"
   }
 }

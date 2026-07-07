@@ -29,10 +29,16 @@ importers:
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.0
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.0
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
 
   packages/extension:
     dependencies:
@@ -70,9 +76,15 @@ importers:
       '@bskill/shared':
         specifier: workspace:*
         version: link:../shared
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.0
 
   packages/shared: {}
 
