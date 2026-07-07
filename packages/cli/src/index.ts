@@ -5,3 +5,11 @@ export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { defaultLibraryDir } from "./paths";
 export { gateStep, type GateDecision, type GateContext } from "./safety-gate";
+export {
+  runSkill,
+  type ReplayStep,
+  type StepDriver,
+  type FailureReport,
+  type ReplayResult,
+  type RunOptions,
+} from "./replay";
