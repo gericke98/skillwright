@@ -5,13 +5,24 @@
  * background says a recording is active.
  */
 import { buildCaptureStep } from "./capture";
-import type { CaptureMessage, RecStateMessage } from "./messages";
+import type { CaptureMessage, RecStateMessage, RecStateReply } from "./messages";
 
 let recording = false;
 
 chrome.runtime.onMessage.addListener((msg: RecStateMessage) => {
   if (msg?.kind === "recstate") recording = msg.recording;
 });
+
+// A page loaded after recording started never receives the start broadcast, so
+// pull the current state on load (handles record-then-navigate).
+chrome.runtime
+  .sendMessage({ kind: "recstate-query" } satisfies CaptureMessage)
+  .then((reply: RecStateReply | undefined) => {
+    if (reply) recording = reply.recording;
+  })
+  .catch(() => {
+    /* background asleep; a later recstate broadcast will set it */
+  });
 
 function send(msg: CaptureMessage): void {
   chrome.runtime.sendMessage(msg).catch(() => {

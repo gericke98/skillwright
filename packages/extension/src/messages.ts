@@ -3,7 +3,13 @@ import type { Step } from "@bskill/shared";
 /** content script → background */
 export type CaptureMessage =
   | { kind: "step"; step: Step }
-  | { kind: "navigation"; url: string };
+  | { kind: "navigation"; url: string }
+  | { kind: "recstate-query" };
+
+/** background → content script: reply to a recstate-query. */
+export interface RecStateReply {
+  recording: boolean;
+}
 
 /** side panel → background */
 export type PanelMessage =

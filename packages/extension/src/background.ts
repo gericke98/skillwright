@@ -84,6 +84,9 @@ chrome.runtime.onMessage.addListener(
       case "status":
         sendResponse(status());
         return true;
+      case "recstate-query":
+        sendResponse({ recording: session.isRecording });
+        return true;
       case "connectRelay":
         void startRelay(msg.port, msg.token);
         break;
