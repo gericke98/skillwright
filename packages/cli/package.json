@@ -1,0 +1,22 @@
+{
+  "name": "@bskill/cli",
+  "version": "0.0.0",
+  "description": "bskill CLI — distill recordings into Agent Skills and replay them",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "bskill": "./src/bin.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bskill/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
