@@ -1,7 +1,13 @@
 # bskill — M1 build status
 
 Vertical slice: capture → segment-shaped recording → zero-LLM template distill →
-relay → replay, gated on a real record/replay round-trip + `skills-ref validate`.
+relay → replay. **M1 GATE CLOSED (2026-07-07):** recorded search+delete once in
+real Chrome, distilled it, and `bskill run <slug> --relay --confirm-destructive`
+replayed it against the real default profile via the extension relay and
+actually deleted the invoice row (trusted `chrome.debugger` click). The safety
+gate blocks the destructive step without `--confirm-destructive`. Remaining
+polish: wire `skills-ref validate` into CI (the one M1 checklist item not yet
+automated).
 
 ## Built and verified (103 tests; capture + replay proven against a real browser)
 
