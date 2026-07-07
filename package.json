@@ -1,0 +1,19 @@
+{
+  "name": "bskill-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser Skill Learner — capture a browser task once, replay it as a portable Agent Skill",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --build",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "packageManager": "pnpm@11.1.3"
+}
