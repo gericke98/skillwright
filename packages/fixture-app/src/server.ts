@@ -1,0 +1,45 @@
+import { createServer, type Server } from "node:http";
+import { renderPage, type Variant } from "./page";
+
+export interface FixtureServer {
+  server: Server;
+  port: number;
+  url: string;
+  close: () => Promise<void>;
+}
+
+/**
+ * Start the fixture invoice app on `port` (0 = an ephemeral free port).
+ * `GET /` serves variant "a"; `GET /?variant=b` serves the selector-shifted
+ * variant used by the heal path.
+ */
+export function startFixtureServer(port = 0): Promise<FixtureServer> {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "/", "http://localhost");
+    const variant: Variant = url.searchParams.get("variant") === "b" ? "b" : "a";
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    res.end(renderPage(variant));
+  });
+
+  return new Promise((resolve) => {
+    server.listen(port, "127.0.0.1", () => {
+      const addr = server.address();
+      const boundPort = typeof addr === "object" && addr ? addr.port : port;
+      resolve({
+        server,
+        port: boundPort,
+        url: `http://127.0.0.1:${boundPort}/`,
+        close: () =>
+          new Promise<void>((res, rej) => server.close((e) => (e ? rej(e) : res()))),
+      });
+    });
+  });
+}
+
+// Allow `node --experimental-strip-types src/server.ts` for manual use.
+if (process.argv[1] && process.argv[1].endsWith("server.ts")) {
+  const port = Number(process.env.PORT ?? 5178);
+  startFixtureServer(port).then((f) => {
+    process.stdout.write(`fixture invoice app on ${f.url}\n`);
+  });
+}
