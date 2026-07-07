@@ -14,7 +14,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bskill/shared": "workspace:*"
+    "@bskill/shared": "workspace:*",
+    "playwright": "^1.61.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

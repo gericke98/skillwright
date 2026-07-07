@@ -12,6 +12,8 @@
     "@bskill/shared": "workspace:*",
     "@bskill/cli": "workspace:*",
     "@bskill/extension": "workspace:*",
-    "@bskill/fixture-app": "workspace:*"
-  }
+    "@bskill/fixture-app": "workspace:*",
+    "playwright": "^1.61.1"
+  },
+  "dependencies": {}
 }

@@ -6,6 +6,8 @@ export interface ReplayStep {
   effect: EffectTag;
   /** Ordered selector alternatives, most stable first. */
   selectors: string[];
+  /** For value actions (change/input): the value to enter (post-parameter). */
+  value?: string;
 }
 
 /**

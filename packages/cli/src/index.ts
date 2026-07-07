@@ -13,3 +13,5 @@ export {
   type ReplayResult,
   type RunOptions,
 } from "./replay";
+export { translateSelector, type LocatorDescriptor } from "./translate-selector";
+export { PlaywrightStepDriver } from "./playwright-driver";
