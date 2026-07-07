@@ -1,0 +1,17 @@
+{
+  "name": "@bskill/integration",
+  "version": "0.0.0",
+  "description": "Cross-package integration tests for the bskill pipeline",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@bskill/shared": "workspace:*",
+    "@bskill/cli": "workspace:*",
+    "@bskill/extension": "workspace:*",
+    "@bskill/fixture-app": "workspace:*"
+  }
+}

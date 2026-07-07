@@ -4,7 +4,7 @@
   "description": "Deterministic local invoice app for bskill record/replay/heal fixtures and evals",
   "license": "MIT",
   "type": "module",
-  "main": "./src/server.ts",
+  "main": "./src/index.ts",
   "scripts": {
     "serve": "tsx src/server.ts",
     "test": "vitest run"
