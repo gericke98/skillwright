@@ -8,9 +8,15 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc --build",
+    "build:crx": "vite build",
     "test": "vitest run"
   },
   "dependencies": {
     "@bskill/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
+    "@types/chrome": "^0.2.2",
+    "vite": "^8.1.3"
   }
 }
