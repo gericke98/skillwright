@@ -25,6 +25,7 @@ export {
 } from "./relay-driver";
 export { mintToken, verifyToken } from "./token";
 export { WsRelayServer, type RelayServerOptions } from "./relay-server";
+export { runSkillViaRelay, type RelayRunOptions } from "./relay-run";
 export {
   parseMessage,
   type PairMessage,

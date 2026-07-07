@@ -2,13 +2,20 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { WebSocket } from "ws";
 import { chromium, type Browser, type Page } from "playwright";
 import { startFixtureServer, type FixtureServer } from "@bskill/fixture-app";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   WsRelayServer,
   RelayStepDriver,
   runSkill,
+  runSkillViaRelay,
+  distill,
+  writeSkillDirectory,
   translateSelector,
   type ReplayStep,
 } from "@bskill/cli";
+import type { Recording } from "@bskill/shared";
 
 /**
  * End-to-end relay path (design B): RelayStepDriver → WsRelayServer (real
@@ -117,6 +124,37 @@ describe("relay e2e: driver → WS server → fake extension → real DOM", () =
     const { url } = await relay.start();
     await expect(fakeExtension(url, "WRONG-TOKEN", page)).rejects.toThrow(/invalid token/i);
     await relay.close();
+    await page.close();
+  });
+
+  test("runSkillViaRelay loads a distilled skill from disk and replays it via the relay", async () => {
+    const page = await browser.newPage();
+    await page.goto(fx.url);
+
+    const recording: Recording = {
+      title: "Delete invoice INV-001",
+      steps: [
+        { type: "change", effect: "mutating", selectors: [["aria/Search invoices"]], value: "INV-001" },
+        { type: "click", effect: "destructive", selectors: [["aria/Delete invoice INV-001"], ['[data-testid="delete-invoice"]']] },
+      ],
+      "x-bskill": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" } },
+    };
+    const home = mkdtempSync(join(tmpdir(), "bskill-relay-"));
+    const skill = distill(recording, {});
+    writeSkillDirectory(skill, home);
+
+    const result = await runSkillViaRelay(skill.slug, {
+      confirmDestructive: true,
+      port: 0,
+      libraryDir: home,
+      onReady: ({ url, token }) => {
+        // The extension connects once the relay is up (fire and forget).
+        void fakeExtension(url, token, page);
+      },
+    });
+
+    expect(result.status).toBe("ok");
+    expect(await page.locator('[data-invoice="INV-001"]').count()).toBe(0);
     await page.close();
   });
 });

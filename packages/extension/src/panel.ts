@@ -1,5 +1,5 @@
 /** Side panel controller — thin UI over the background worker's state. */
-import type { PanelMessage, StatusMessage, SavedRecordingMessage } from "./messages";
+import type { PanelMessage, StatusMessage, SavedRecordingMessage, RelayStatusMessage } from "./messages";
 
 /** Save a finished recording as a file with a proper name (panel has a window). */
 function downloadRecording(msg: SavedRecordingMessage): void {
@@ -41,11 +41,31 @@ toggle.addEventListener("click", async () => {
   }
 });
 
-// Live status pushes + the finished-recording download from the background.
-chrome.runtime.onMessage.addListener((msg: StatusMessage | SavedRecordingMessage) => {
-  if (msg?.kind === "status") render(msg);
-  else if (msg?.kind === "recording") downloadRecording(msg);
+// Relay pairing controls.
+const relayPort = document.getElementById("relay-port") as HTMLInputElement;
+const relayToken = document.getElementById("relay-token") as HTMLInputElement;
+const relayConnect = document.getElementById("relay-connect") as HTMLButtonElement;
+const relayStatus = document.getElementById("relay-status") as HTMLSpanElement;
+
+relayConnect.addEventListener("click", () => {
+  const port = Number(relayPort.value) || 9333;
+  const token = relayToken.value.trim();
+  if (!token) {
+    relayStatus.textContent = "enter the token from bskill run";
+    return;
+  }
+  void send({ kind: "connectRelay", port, token });
+  relayStatus.textContent = "connecting…";
 });
+
+// Live status pushes, the finished-recording download, and relay status.
+chrome.runtime.onMessage.addListener(
+  (msg: StatusMessage | SavedRecordingMessage | RelayStatusMessage) => {
+    if (msg?.kind === "status") render(msg);
+    else if (msg?.kind === "recording") downloadRecording(msg);
+    else if (msg?.kind === "relaystatus") relayStatus.textContent = msg.status;
+  },
+);
 
 // Initial state.
 send({ kind: "status" }).then((s) => s && render(s));

@@ -33,19 +33,7 @@ function cmdDistill(argv: string[]): void {
   }
 }
 
-async function cmdRun(argv: string[]): Promise<void> {
-  const slug = argv.find((a) => !a.startsWith("--"));
-  if (!slug) fail("usage: bskill run <skill> [--confirm-destructive] [--cdp <url>]");
-  const confirmDestructive = argv.includes("--confirm-destructive");
-  const cdpFlag = argv.indexOf("--cdp");
-  const cdpUrl =
-    (cdpFlag >= 0 ? argv[cdpFlag + 1] : undefined) ?? process.env.CHROME_CDP_URL ?? "";
-  if (!cdpUrl) {
-    fail("no CDP endpoint. Pass --cdp <url> or set CHROME_CDP_URL (start 'bskill relay').");
-  }
-
-  const { runSkillByName } = await import("./run");
-  const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl });
+function reportResult(slug: string, result: Awaited<ReturnType<typeof import("./run")["runSkillByName"]>>): void {
   switch (result.status) {
     case "ok":
       process.stdout.write(`✓ replayed "${slug}" successfully\n`);
@@ -59,6 +47,42 @@ async function cmdRun(argv: string[]): Promise<void> {
       process.stderr.write(`bskill: replay failed\n${JSON.stringify(result.report, null, 2)}\n`);
       process.exit(2);
   }
+}
+
+async function cmdRun(argv: string[]): Promise<void> {
+  const slug = argv.find((a) => !a.startsWith("--"));
+  if (!slug) {
+    fail("usage: bskill run <skill> [--relay [--port N] | --cdp <url>] [--confirm-destructive]");
+  }
+  const confirmDestructive = argv.includes("--confirm-destructive");
+
+  if (argv.includes("--relay")) {
+    const portFlag = argv.indexOf("--port");
+    const port = portFlag >= 0 ? Number(argv[portFlag + 1]) : undefined;
+    const { runSkillViaRelay } = await import("./relay-run");
+    const result = await runSkillViaRelay(slug!, {
+      confirmDestructive,
+      port,
+      onReady: ({ url, token }) => {
+        process.stdout.write(
+          `Relay listening on ${url}\n` +
+            `In the bskill side panel: set port + token, then click Connect.\n` +
+            `  token: ${token}\n` +
+            `Waiting for the extension to pair...\n`,
+        );
+      },
+    });
+    return reportResult(slug!, result);
+  }
+
+  const cdpFlag = argv.indexOf("--cdp");
+  const cdpUrl = (cdpFlag >= 0 ? argv[cdpFlag + 1] : undefined) ?? process.env.CHROME_CDP_URL ?? "";
+  if (!cdpUrl) {
+    fail("no endpoint. Use --relay, or --cdp <url> / CHROME_CDP_URL for a debug-profile Chrome.");
+  }
+  const { runSkillByName } = await import("./run");
+  const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl });
+  return reportResult(slug!, result);
 }
 
 async function main(): Promise<void> {

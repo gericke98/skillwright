@@ -5,15 +5,37 @@
  * active, and hands the finished recording to a download on stop.
  */
 import { RecordingSession } from "./session";
+import { connectRelay } from "./relay-client";
 import type {
   PanelMessage,
   CaptureMessage,
   StatusMessage,
   RecStateMessage,
   SavedRecordingMessage,
+  RelayStatusMessage,
 } from "./messages";
 
 const session = new RecordingSession();
+let relaySocket: WebSocket | undefined;
+
+function relayStatus(status: string): void {
+  const msg: RelayStatusMessage = { kind: "relaystatus", status };
+  chrome.runtime.sendMessage(msg).catch(() => {});
+}
+
+async function startRelay(port: number, token: string): Promise<void> {
+  relaySocket?.close();
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id == null) {
+    relayStatus("error: no active tab");
+    return;
+  }
+  try {
+    relaySocket = await connectRelay(port, token, tab.id, relayStatus);
+  } catch (e) {
+    relayStatus(`error: ${String(e)}`);
+  }
+}
 
 function broadcastRecState(recording: boolean): void {
   const msg: RecStateMessage = { kind: "recstate", recording };
@@ -62,6 +84,9 @@ chrome.runtime.onMessage.addListener(
       case "status":
         sendResponse(status());
         return true;
+      case "connectRelay":
+        void startRelay(msg.port, msg.token);
+        break;
       case "step":
         if (session.isRecording) {
           session.addStep(msg.step);

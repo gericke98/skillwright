@@ -9,7 +9,14 @@ export type CaptureMessage =
 export type PanelMessage =
   | { kind: "start"; title: string }
   | { kind: "stop" }
-  | { kind: "status" };
+  | { kind: "status" }
+  | { kind: "connectRelay"; port: number; token: string };
+
+/** background → side panel: relay connection status. */
+export interface RelayStatusMessage {
+  kind: "relaystatus";
+  status: string;
+}
 
 /** background → side panel (reply / broadcast) */
 export interface StatusMessage {
