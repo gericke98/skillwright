@@ -61,6 +61,20 @@ describe("runSkill — deterministic replay orchestration", () => {
     expect(driver.attempts).toEqual(["aria/Delete"]);
   });
 
+  test("executes a selectorless step (navigate) exactly once", async () => {
+    const seen: Array<{ type: string; sel: string }> = [];
+    const driver: StepDriver = {
+      async execute(s, sel) {
+        seen.push({ type: s.type, sel });
+        return "ok";
+      },
+    };
+    const nav: ReplayStep = { type: "navigate", effect: "readonly", selectors: [] };
+    const result = await runSkill([nav], driver, { confirmDestructive: false });
+    expect(result.status).toBe("ok");
+    expect(seen).toEqual([{ type: "navigate", sel: "" }]);
+  });
+
   test("emits a structured failure report when all selectors are exhausted", async () => {
     const driver = fakeDriver(new Set());
     const result = await runSkill([step("mutating", ["aria/X", "#y", "text/Z"])], driver, {

@@ -39,8 +39,10 @@ export class PlaywrightStepDriver implements StepDriver {
         case "click":
           await loc.click({ timeout: this.timeoutMs });
           return "ok";
+        case "navigate":
+          if (step.url) await this.page.goto(step.url, { timeout: this.timeoutMs });
+          return "ok";
         default:
-          // navigate and other non-element steps are handled by the run wrapper.
           return "ok";
       }
     } catch {

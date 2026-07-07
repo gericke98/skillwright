@@ -8,6 +8,8 @@ export interface ReplayStep {
   selectors: string[];
   /** For value actions (change/input): the value to enter (post-parameter). */
   value?: string;
+  /** For navigate steps: the (redacted) destination URL. */
+  url?: string;
 }
 
 /**
@@ -78,9 +80,11 @@ export async function runSkill(
       };
     }
 
+    // Selectorless steps (e.g. navigate) are attempted once; the driver decides.
+    const candidates = step.selectors.length > 0 ? step.selectors : [""];
     const tried: string[] = [];
     let ok = false;
-    for (const selector of step.selectors) {
+    for (const selector of candidates) {
       tried.push(selector);
       if ((await driver.execute(step, selector)) === "ok") {
         ok = true;

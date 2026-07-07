@@ -33,14 +33,44 @@ function cmdDistill(argv: string[]): void {
   }
 }
 
-function main(): void {
+async function cmdRun(argv: string[]): Promise<void> {
+  const slug = argv.find((a) => !a.startsWith("--"));
+  if (!slug) fail("usage: bskill run <skill> [--confirm-destructive] [--cdp <url>]");
+  const confirmDestructive = argv.includes("--confirm-destructive");
+  const cdpFlag = argv.indexOf("--cdp");
+  const cdpUrl =
+    (cdpFlag >= 0 ? argv[cdpFlag + 1] : undefined) ?? process.env.CHROME_CDP_URL ?? "";
+  if (!cdpUrl) {
+    fail("no CDP endpoint. Pass --cdp <url> or set CHROME_CDP_URL (start 'bskill relay').");
+  }
+
+  const { runSkillByName } = await import("./run");
+  const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl });
+  switch (result.status) {
+    case "ok":
+      process.stdout.write(`✓ replayed "${slug}" successfully\n`);
+      return;
+    case "needs-confirmation":
+      fail(
+        `step ${result.report.stepIndex} is ${result.report.effect}; re-run with --confirm-destructive`,
+      );
+      break;
+    case "failed":
+      process.stderr.write(`bskill: replay failed\n${JSON.stringify(result.report, null, 2)}\n`);
+      process.exit(2);
+  }
+}
+
+async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
     case "distill":
       return cmdDistill(rest);
+    case "run":
+      return cmdRun(rest);
     default:
-      fail(`unknown command "${cmd ?? ""}". commands: distill`);
+      fail(`unknown command "${cmd ?? ""}". commands: distill, run`);
   }
 }
 
-main();
+void main();
