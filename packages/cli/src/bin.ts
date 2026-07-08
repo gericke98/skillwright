@@ -6,6 +6,7 @@ import { distill } from "./distill";
 import { writeSkillDirectory } from "./write-skill";
 import { defaultLibraryDir } from "./paths";
 import { promote } from "./quarantine";
+import { installSkill, listSkills, syncInstalls, type InstallScope } from "./install";
 
 function fail(msg: string): never {
   process.stderr.write(`bskill: ${msg}\n`);
@@ -112,6 +113,43 @@ function cmdPromote(argv: string[]): void {
   }
 }
 
+function cmdInstall(argv: string[]): void {
+  const all = argv.includes("--all");
+  const slug = argv.find((a) => !a.startsWith("--"));
+  if (!all && !slug) fail("usage: bskill install [<skill>|--all] [--project <dir>|--user]");
+
+  const projectFlag = argv.indexOf("--project");
+  const scope: InstallScope = argv.includes("--user") ? "user" : "project";
+  const projectDir = projectFlag >= 0 ? argv[projectFlag + 1] : process.cwd();
+
+  const slugs = all ? listSkills().map((s) => s.slug) : [slug!];
+  if (slugs.length === 0) fail("no skills in the library to install");
+  for (const s of slugs) {
+    const result = installSkill(s, { scope, projectDir });
+    const modes = result.locations.map((l) => `${l.path} (${l.mode})`).join(", ");
+    process.stdout.write(`Installed "${s}" → ${modes}\n`);
+  }
+}
+
+function cmdList(): void {
+  const listing = listSkills();
+  if (listing.length === 0) {
+    process.stdout.write("No skills in the library. Distill one with `bskill distill`.\n");
+    return;
+  }
+  for (const skill of listing) {
+    process.stdout.write(`${skill.slug}\n`);
+    for (const i of skill.installs) {
+      process.stdout.write(`  ${i.mode === "link" ? "linked" : "copied"} → ${i.path}${i.staleable ? " (stale-able; run `bskill sync`)" : ""}\n`);
+    }
+  }
+}
+
+function cmdSync(): void {
+  const n = syncInstalls();
+  process.stdout.write(`Refreshed ${n} copy-mode install(s).\n`);
+}
+
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
@@ -121,8 +159,14 @@ async function main(): Promise<void> {
       return cmdRun(rest);
     case "promote":
       return cmdPromote(rest);
+    case "install":
+      return cmdInstall(rest);
+    case "list":
+      return cmdList();
+    case "sync":
+      return cmdSync();
     default:
-      fail(`unknown command "${cmd ?? ""}". commands: distill, run, promote`);
+      fail(`unknown command "${cmd ?? ""}". commands: distill, run, promote, install, list, sync`);
   }
 }
 
