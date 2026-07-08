@@ -36,6 +36,23 @@ For each, note:
 - **Secrets**: confirm redaction on real forms — if ANY credential appears in a
   generated file, that's a P0 (open a SECURITY report, not a public issue).
 
+## Automated public-site dogfood tools
+
+Run against real public sites (no auth needed) — these already found + fixed
+three real bugs (selector priority, a nested-URL secret leak, missing form-field
+anchors):
+
+```bash
+npx tsx packages/integration/dogfood-realsite.mjs    # replay on a real site
+npx tsx packages/integration/dogfood-capture.mjs     # capture+distill on real HTML
+npx tsx packages/integration/dogfood-network.mjs      # network capture + redaction
+npx tsx packages/integration/dogfood-spa.mjs          # selector quality on a real SPA
+npx tsx packages/integration/dogfood-roundtrip.mjs    # full capture→distill→replay
+```
+
+They hit external sites (flaky), so they're tools, not CI tests. Any real break
+becomes a fixture regression test + a fix.
+
 ## Turn findings into the roadmap
 
 - [ ] File each break as an issue (use the bug template).
