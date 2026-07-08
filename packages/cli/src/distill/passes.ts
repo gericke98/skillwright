@@ -96,6 +96,8 @@ export async function inferParams(recording: Recording, backend: LlmBackend): Pr
     "TASK: extract parameters",
     "Identify demo-typed values that should become reusable inputs. Secrets are ALWAYS parameters.",
     "For each, give name (snake_case), type, required (boolean), and the exact demoValue as seen below.",
+    "Some steps include the API `requests` they fired: a demo value that also appears in a request URL",
+    "or path is strong evidence it is a real parameter — use that network truth to decide.",
     "Steps:",
     stepsJson(summarizeSteps(recording)),
     'Return JSON: { "params": [ { "name", "type", "required", "demoValue", "description" } ] }',

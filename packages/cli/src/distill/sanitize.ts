@@ -14,12 +14,16 @@ export interface StepSummary {
   label?: string;
   value?: string;
   url?: string;
+  /** The network calls this step fired (Capture v2) — HTTP-method + redacted URL
+   * ground truth the distiller uses for effect and parameterization. */
+  requests?: Array<{ method: string; url: string }>;
 }
 
 /**
  * Build the redacted step view the distiller passes to the LLM. Values and URLs
- * are scrubbed FIRST (the model never sees a live credential), and the visible
- * label is pulled off the selector stack.
+ * are scrubbed FIRST (the model never sees a live credential), the visible label
+ * is pulled off the selector stack, and any correlated network calls are surfaced
+ * as method + redacted URL so the model can reason from network truth.
  */
 export function summarizeSteps(recording: Recording): StepSummary[] {
   return recording.steps.map((step, index) => {
@@ -28,6 +32,9 @@ export function summarizeSteps(recording: Recording): StepSummary[] {
     if (label) summary.label = label;
     if (typeof step.value === "string") summary.value = redactValue(step.value);
     if (typeof step.url === "string") summary.url = redactUrl(step.url);
+    if (step.requests && step.requests.length > 0) {
+      summary.requests = step.requests.map((r) => ({ method: r.method, url: redactUrl(r.url) }));
+    }
     return summary;
   });
 }
