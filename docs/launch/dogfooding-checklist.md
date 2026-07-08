@@ -51,6 +51,7 @@ npx tsx packages/integration/dogfood-roundtrip.mjs    # full capture→distill�
 npx tsx packages/integration/dogfood-ambiguity.mjs    # selector uniqueness on a list
 npx tsx packages/integration/dogfood-select.mjs       # <select> replay
 npx tsx packages/integration/dogfood-login.mjs        # full form fill + submit (login)
+npx tsx packages/integration/dogfood-multipage.mjs    # cross-page flow (link → page → interact)
 ```
 
 They hit external sites (flaky), so they're tools, not CI tests. Any real break
