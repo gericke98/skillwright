@@ -1,6 +1,13 @@
 import type { EffectTag } from "@skillwright/shared";
 import { gateStep } from "./safety-gate";
 
+/** The captured HTTP request a step can be replayed AS (API-replay mode). */
+export interface StepRequest {
+  method: string;
+  url: string;
+  body?: string;
+}
+
 export interface ReplayStep {
   type: string;
   effect: EffectTag;
@@ -10,6 +17,8 @@ export interface ReplayStep {
   value?: string;
   /** For navigate steps: the (redacted) destination URL. */
   url?: string;
+  /** The primary network call this step fired — enables API-replay. */
+  request?: StepRequest;
 }
 
 /**
@@ -39,6 +48,9 @@ export interface PageSnapshot {
 export interface StepDriver {
   execute(step: ReplayStep, selector: string): Promise<StepOutcome>;
   snapshot?(): Promise<PageSnapshot>;
+  /** Re-execute a step's captured request against the live authenticated session
+   * (API-replay). Optional; only used when `apiReplay` is enabled. */
+  executeRequest?(request: StepRequest): Promise<StepOutcome>;
 }
 
 /** Tier-3 healer: propose a new selector for a failing step from a page
@@ -63,6 +75,9 @@ export interface RunOptions {
   heal?: HealFn;
   /** Called when a heal succeeds — the write-back hook (quarantine in M3 P2). */
   onHeal?: (patch: { stepIndex: number; selector: string }) => void;
+  /** Replay steps via their captured request (with live auth) instead of the DOM
+   * when available. Faster and deterministic; still safety-gated. */
+  apiReplay?: boolean;
 }
 
 /**
@@ -105,6 +120,27 @@ export async function runSkill(
           reason: "safety gate halted the step",
         },
       };
+    }
+
+    // API-replay: re-execute the captured request (gate already passed above).
+    // On success the step is done deterministically without touching the DOM.
+    // On failure, a readonly step may fall back to the DOM; a mutating/destructive
+    // step must NOT (the request may have partially applied — double-execute guard).
+    if (opts.apiReplay && step.request && driver.executeRequest) {
+      const apiOutcome = await driver.executeRequest(step.request);
+      if (apiOutcome === "ok") continue;
+      if (step.effect !== "readonly") {
+        return {
+          status: "failed",
+          report: {
+            stepIndex: i,
+            effect: step.effect,
+            selectorsTried: [],
+            reason: `api-replay of ${step.request.method} did not succeed; not falling back to the DOM (double-execute guard)`,
+          },
+        };
+      }
+      // readonly → safe to fall through to the DOM path
     }
 
     // Selectorless steps (e.g. navigate) are attempted once; the driver decides.

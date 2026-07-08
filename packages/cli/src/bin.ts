@@ -84,6 +84,7 @@ async function cmdRun(argv: string[]): Promise<void> {
     );
   }
   const confirmDestructive = argv.includes("--confirm-destructive");
+  const apiReplay = argv.includes("--api");
   const inputs = parseInputs(argv);
 
   try {
@@ -113,7 +114,7 @@ async function cmdRun(argv: string[]): Promise<void> {
       fail("no endpoint. Use --relay, or --cdp <url> / CHROME_CDP_URL for a debug-profile Chrome.");
     }
     const { runSkillByName } = await import("./run");
-    const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl, inputs });
+    const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl, inputs, apiReplay });
     return reportResult(slug!, result);
   } catch (e) {
     if (e instanceof MissingInputError) fail(`${e.message} — pass them with --input <name>=<value>`);

@@ -35,6 +35,15 @@ The full v1 pipeline is built and green; not yet published to npm.
   arguments) substitute `{placeholder}` values into steps at run time; a missing
   required input fails fast before any browser action. Parameterized skills now
   actually take parameters.
+- **Network-aware distillation.** The distiller compiles from network truth — a
+  demo value that also appears in a captured request URL/body is treated as
+  strong evidence it's a real parameter. Request bodies (POST/PUT) are captured
+  and redacted too.
+- **API-replay mode** (`skillwright run --api`). A step can replay AS its captured
+  HTTP request (with the live authenticated session) instead of driving the DOM —
+  faster, deterministic, immune to UI churn. Still safety-gated; a mutating/
+  destructive API-replay that fails never falls back to the DOM (double-execute
+  guard). Verified e2e against real Chromium.
 
 ### Security
 

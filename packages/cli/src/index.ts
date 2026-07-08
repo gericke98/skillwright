@@ -43,6 +43,7 @@ export { gateStep, type GateDecision, type GateContext } from "./safety-gate";
 export {
   runSkill,
   type ReplayStep,
+  type StepRequest,
   type StepDriver,
   type StepOutcome,
   type PageSnapshot,

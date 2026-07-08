@@ -15,6 +15,8 @@ export interface RunSkillOptions {
   libraryDir?: string;
   /** Runtime inputs substituted into `{placeholder}` step values/selectors. */
   inputs?: Record<string, string>;
+  /** Replay steps via their captured request instead of the DOM when available. */
+  apiReplay?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export async function runSkillByName(slug: string, opts: RunSkillOptions): Promi
       confirmDestructive: opts.confirmDestructive,
       heal: buildHealer(),
       onHeal: makeOnHeal(dir),
+      apiReplay: opts.apiReplay,
     });
     if (result.status === "ok") confirmCleanRun(dir);
     return result;

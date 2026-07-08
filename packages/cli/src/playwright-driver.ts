@@ -1,5 +1,5 @@
 import type { Locator, Page } from "playwright";
-import type { PageSnapshot, ReplayStep, StepDriver, StepOutcome } from "./replay";
+import type { PageSnapshot, ReplayStep, StepDriver, StepOutcome, StepRequest } from "./replay";
 import { translateSelector } from "./translate-selector";
 
 /**
@@ -31,6 +31,21 @@ export class PlaywrightStepDriver implements StepDriver {
   async snapshot(): Promise<PageSnapshot> {
     const aria = await this.page.locator("body").ariaSnapshot();
     return { url: this.page.url(), aria };
+  }
+
+  /** API-replay: re-issue the captured request via the context's request API,
+   * which carries the authenticated session's cookies. */
+  async executeRequest(request: StepRequest): Promise<StepOutcome> {
+    try {
+      const res = await this.page.context().request.fetch(request.url, {
+        method: request.method,
+        ...(request.body !== undefined ? { data: request.body } : {}),
+        timeout: this.timeoutMs,
+      });
+      return res.ok() ? "ok" : "fail";
+    } catch {
+      return "fail";
+    }
   }
 
   async execute(step: ReplayStep, selector: string): Promise<StepOutcome> {

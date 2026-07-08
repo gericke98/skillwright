@@ -1,10 +1,26 @@
 import {
   classifyStepEffect,
   deriveNetworkEffect,
+  EFFECT_SEVERITY,
   roundUpEffect,
+  type CapturedRequest,
   type Recording,
 } from "@skillwright/shared";
-import type { ReplayStep } from "./replay";
+import type { ReplayStep, StepRequest } from "./replay";
+
+/** The state-changing request a step is best replayed AS: the most-severe method
+ * (a DELETE/POST beats the incidental GETs a click also triggers). */
+function primaryRequest(requests: CapturedRequest[] | undefined): StepRequest | undefined {
+  if (!requests || requests.length === 0) return undefined;
+  const severity = (r: CapturedRequest) => {
+    const eff = deriveNetworkEffect([r]);
+    return eff ? EFFECT_SEVERITY.indexOf(eff) : 0;
+  };
+  const best = requests.reduce((a, b) => (severity(b) > severity(a) ? b : a));
+  const req: StepRequest = { method: best.method, url: best.url };
+  if (typeof best.body === "string") req.body = best.body;
+  return req;
+}
 
 /**
  * Convert a recording into the flat ReplayStep[] the run loop consumes: take
@@ -21,6 +37,8 @@ export function toReplaySteps(recording: Recording): ReplayStep[] {
     const out: ReplayStep = { type: step.type, effect, selectors };
     if (typeof step.value === "string") out.value = step.value;
     if (typeof step.url === "string") out.url = step.url;
+    const request = primaryRequest(step.requests);
+    if (request) out.request = request;
     return out;
   });
 }

@@ -1,10 +1,17 @@
 import { createServer, type Server } from "node:http";
 import { renderPage, type Variant } from "./page";
 
+export interface ApiCall {
+  method: string;
+  path: string;
+}
+
 export interface FixtureServer {
   server: Server;
   port: number;
   url: string;
+  /** API calls the page (or an API-replay) made to `/api/*`, in order. */
+  apiCalls: ApiCall[];
   close: () => Promise<void>;
 }
 
@@ -14,11 +21,13 @@ export interface FixtureServer {
  * variant used by the heal path.
  */
 export function startFixtureServer(port = 0): Promise<FixtureServer> {
+  const apiCalls: ApiCall[] = [];
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     // Backend endpoints the page calls (GET search, POST approve, DELETE delete)
     // so there is real network traffic to capture — the method is the effect truth.
     if (url.pathname.startsWith("/api/")) {
+      apiCalls.push({ method: req.method ?? "GET", path: url.pathname });
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ ok: true }));
       return;
@@ -36,6 +45,7 @@ export function startFixtureServer(port = 0): Promise<FixtureServer> {
         server,
         port: boundPort,
         url: `http://127.0.0.1:${boundPort}/`,
+        apiCalls,
         close: () =>
           new Promise<void>((res, rej) => server.close((e) => (e ? rej(e) : res()))),
       });

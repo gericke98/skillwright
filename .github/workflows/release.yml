@@ -13,6 +13,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # npm publish is skipped (not failed) until an NPM_TOKEN secret is added, so
+      # a first tag still produces the GitHub Release + downloadable extension zip.
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -33,10 +37,16 @@ jobs:
       - run: pnpm test
 
       # Publish the CLI to npm with provenance. `prepack` builds the bundle.
+      # Skipped (not failed) when NPM_TOKEN isn't set yet.
       - name: Publish skillwright to npm
+        if: env.HAS_NPM_TOKEN == 'true'
         run: pnpm --filter skillwright publish --provenance --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Note skipped npm publish
+        if: env.HAS_NPM_TOKEN != 'true'
+        run: echo "::notice::NPM_TOKEN not set — skipped npm publish. Add the secret and re-tag to publish the CLI."
 
       # Build + zip the unpacked extension for the GitHub Release.
       - name: Build extension
@@ -54,7 +64,7 @@ jobs:
           body: |
             skillwright ${{ github.ref_name }}
 
-            - CLI: `npm i -g skillwright` (published to npm with provenance).
+            - CLI: `npm i -g skillwright` (once published to npm with provenance).
             - Extension: download `skillwright-extension.zip`, unzip, and load unpacked
               via chrome://extensions (Developer mode). See the README for the
               known unpacked-extension limitation on managed profiles.
