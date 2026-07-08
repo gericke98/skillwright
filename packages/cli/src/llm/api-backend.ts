@@ -20,7 +20,7 @@ interface ContentBlock {
 }
 
 /**
- * Direct Anthropic API backend (§6.3), opt-in via BSKILL_API_KEY. Uses a forced
+ * Direct Anthropic API backend (§6.3), opt-in via SKILLWRIGHT_API_KEY. Uses a forced
  * tool call for native structured output — the tool's input_schema is the
  * distiller's schema — so JSON comes back structured, not as free text. Low
  * retry budget because native structured output rarely needs a repair round.

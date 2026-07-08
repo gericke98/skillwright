@@ -28,6 +28,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`SKILLWRIGHT_API_KEY` was silently ignored** — the API-backend opt-in was
+  broken by the `bskill`→`skillwright` rename. The README and all docs say to
+  set `SKILLWRIGHT_API_KEY` to use the direct Anthropic API distiller, but the
+  factory still read the old `BSKILL_API_KEY`, so a user following the docs got
+  the api backend silently ignored (fell through to agent-cli). Now reads
+  `SKILLWRIGHT_API_KEY` (documented name), with `BSKILL_API_KEY` kept as a legacy
+  alias. Stale comments/docs corrected too.
 - **Checkbox / radio replay** (found dogfooding real checkboxes). Capture emits
   a value-bearing `change` step for a checkbox toggle, and replay drove `change`
   via `fill()` — but Playwright *throws* when you fill a checkbox (and the relay

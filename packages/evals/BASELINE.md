@@ -2,7 +2,7 @@
 
 The passing scorecard that closed the M2 gate — the benchmark for future prompt
 iteration. Re-run with `pnpm eval` (needs a live backend: agent-cli `claude` by
-default, or `BSKILL_API_KEY` for the api backend).
+default, or `SKILLWRIGHT_API_KEY` for the api backend).
 
 **Backend:** `agent-cli:claude` · **Date:** 2026-07-07 · **Result:** 6/6 pass
 
