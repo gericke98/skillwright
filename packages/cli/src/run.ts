@@ -5,6 +5,7 @@ import type { Recording } from "@skillwright/shared";
 import { defaultLibraryDir } from "./paths";
 import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, type ReplayResult } from "./replay";
+import { applyInputs } from "./apply-inputs";
 import { PlaywrightStepDriver } from "./playwright-driver";
 import { applyPromotedOverlay, buildHealer, confirmCleanRun, makeOnHeal } from "./heal-wiring";
 
@@ -12,6 +13,8 @@ export interface RunSkillOptions {
   confirmDestructive: boolean;
   cdpUrl: string;
   libraryDir?: string;
+  /** Runtime inputs substituted into `{placeholder}` step values/selectors. */
+  inputs?: Record<string, string>;
 }
 
 /**
@@ -24,8 +27,11 @@ export async function runSkillByName(slug: string, opts: RunSkillOptions): Promi
   const recording = JSON.parse(
     readFileSync(join(dir, "assets", "recording.json"), "utf8"),
   ) as Recording;
-  const steps = toReplaySteps(recording);
-  applyPromotedOverlay(steps, dir);
+  const overlaid = toReplaySteps(recording);
+  applyPromotedOverlay(overlaid, dir);
+  // Substitute runtime inputs before opening a browser — a missing input fails
+  // fast (throws MissingInputError) without touching the page.
+  const steps = applyInputs(overlaid, opts.inputs ?? {});
 
   const browser = await chromium.connectOverCDP(opts.cdpUrl);
   try {

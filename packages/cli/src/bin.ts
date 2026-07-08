@@ -7,6 +7,7 @@ import { writeSkillDirectory } from "./write-skill";
 import { defaultLibraryDir } from "./paths";
 import { promote } from "./quarantine";
 import { installSkill, listSkills, syncInstalls, type InstallScope } from "./install";
+import { MissingInputError } from "./apply-inputs";
 
 function fail(msg: string): never {
   process.stderr.write(`skillwright: ${msg}\n`);
@@ -62,40 +63,62 @@ function reportResult(slug: string, result: Awaited<ReturnType<typeof import("./
   }
 }
 
+/** Collect repeatable `--input k=v` flags into an inputs map. */
+function parseInputs(argv: string[]): Record<string, string> {
+  const inputs: Record<string, string> = {};
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--input") {
+      const kv = argv[i + 1] ?? "";
+      const eq = kv.indexOf("=");
+      if (eq > 0) inputs[kv.slice(0, eq)] = kv.slice(eq + 1);
+    }
+  }
+  return inputs;
+}
+
 async function cmdRun(argv: string[]): Promise<void> {
-  const slug = argv.find((a) => !a.startsWith("--"));
+  const slug = argv.find((a) => !a.startsWith("--") && !a.includes("="));
   if (!slug) {
-    fail("usage: skillwright run <skill> [--relay [--port N] | --cdp <url>] [--confirm-destructive]");
+    fail(
+      "usage: skillwright run <skill> [--input k=v ...] [--relay [--port N] | --cdp <url>] [--confirm-destructive]",
+    );
   }
   const confirmDestructive = argv.includes("--confirm-destructive");
+  const inputs = parseInputs(argv);
 
-  if (argv.includes("--relay")) {
-    const portFlag = argv.indexOf("--port");
-    const port = portFlag >= 0 ? Number(argv[portFlag + 1]) : undefined;
-    const { runSkillViaRelay } = await import("./relay-run");
-    const result = await runSkillViaRelay(slug!, {
-      confirmDestructive,
-      port,
-      onReady: ({ url, token }) => {
-        process.stdout.write(
-          `Relay listening on ${url}\n` +
-            `In the skillwright side panel: set port + token, then click Connect.\n` +
-            `  token: ${token}\n` +
-            `Waiting for the extension to pair...\n`,
-        );
-      },
-    });
+  try {
+    if (argv.includes("--relay")) {
+      const portFlag = argv.indexOf("--port");
+      const port = portFlag >= 0 ? Number(argv[portFlag + 1]) : undefined;
+      const { runSkillViaRelay } = await import("./relay-run");
+      const result = await runSkillViaRelay(slug!, {
+        confirmDestructive,
+        port,
+        inputs,
+        onReady: ({ url, token }) => {
+          process.stdout.write(
+            `Relay listening on ${url}\n` +
+              `In the skillwright side panel: set port + token, then click Connect.\n` +
+              `  token: ${token}\n` +
+              `Waiting for the extension to pair...\n`,
+          );
+        },
+      });
+      return reportResult(slug!, result);
+    }
+
+    const cdpFlag = argv.indexOf("--cdp");
+    const cdpUrl = (cdpFlag >= 0 ? argv[cdpFlag + 1] : undefined) ?? process.env.CHROME_CDP_URL ?? "";
+    if (!cdpUrl) {
+      fail("no endpoint. Use --relay, or --cdp <url> / CHROME_CDP_URL for a debug-profile Chrome.");
+    }
+    const { runSkillByName } = await import("./run");
+    const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl, inputs });
     return reportResult(slug!, result);
+  } catch (e) {
+    if (e instanceof MissingInputError) fail(`${e.message} — pass them with --input <name>=<value>`);
+    throw e;
   }
-
-  const cdpFlag = argv.indexOf("--cdp");
-  const cdpUrl = (cdpFlag >= 0 ? argv[cdpFlag + 1] : undefined) ?? process.env.CHROME_CDP_URL ?? "";
-  if (!cdpUrl) {
-    fail("no endpoint. Use --relay, or --cdp <url> / CHROME_CDP_URL for a debug-profile Chrome.");
-  }
-  const { runSkillByName } = await import("./run");
-  const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl });
-  return reportResult(slug!, result);
 }
 
 function cmdPromote(argv: string[]): void {
@@ -159,7 +182,7 @@ async function cmdMcp(): Promise<void> {
   await startMcpServer({
     input: process.stdin,
     output: process.stdout,
-    runSkill: async (slug, inputs) => {
+    runSkill: async (slug, args) => {
       const cdpUrl = process.env.CHROME_CDP_URL ?? "";
       if (!cdpUrl) {
         return {
@@ -172,10 +195,26 @@ async function cmdMcp(): Promise<void> {
           },
         };
       }
-      return runSkillByName(slug, {
-        confirmDestructive: inputs.confirm_destructive === true,
-        cdpUrl,
-      });
+      // Tool arguments become skill inputs; `confirm_destructive` is a control key.
+      const inputs: Record<string, string> = {};
+      for (const [k, v] of Object.entries(args)) {
+        if (k !== "confirm_destructive") inputs[k] = String(v);
+      }
+      try {
+        return await runSkillByName(slug, {
+          confirmDestructive: args.confirm_destructive === true,
+          cdpUrl,
+          inputs,
+        });
+      } catch (e) {
+        if (e instanceof MissingInputError) {
+          return {
+            status: "failed",
+            report: { stepIndex: -1, effect: "readonly", selectorsTried: [], reason: e.message },
+          };
+        }
+        throw e;
+      }
     },
   });
 }
