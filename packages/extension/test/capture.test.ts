@@ -66,6 +66,15 @@ describe("buildCaptureStep — event → recording step (§5.2)", () => {
     expect(step.value).not.toContain("sk-abcdef0123456789abcdef");
   });
 
+  test("a file input becomes a required {file} runtime input, never a fake path", () => {
+    // A browser hides the real path behind "C:\fakepath\..." — useless and
+    // unreplayable across machines. Capture parameterizes it: replay demands the
+    // file via --input file=<path> and uses setInputFiles. Never a literal path.
+    const input = el(`<input type="file" aria-label="Attach receipt" />`) as HTMLInputElement;
+    const step = buildCaptureStep(input, "change");
+    expect(step.value).toBe("{file}");
+  });
+
   test("selectors are wrapped as string[][] to match the recording schema", () => {
     const button = el(`<button aria-label="Go" id="g1">Go</button>`);
     const step = buildCaptureStep(button, "click");

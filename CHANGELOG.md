@@ -8,6 +8,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **File-upload capture + replay** (found dogfooding). A `<input type=file>`
+  can't be `fill()`-ed (throws) and its captured value is the browser's useless
+  `C:\fakepath\…` — so a file-upload step failed on replay with a cryptic error.
+  A file upload is inherently parameterized (the file only exists on the replay
+  machine), so capture now emits a **required `{file}` runtime input** and replay
+  uses `setInputFiles` with the path from `--input file=<path>`. On the DOM /
+  `--cdp` path this fully works; the **relay path can't upload files in v1**
+  (page JS can't set a file input — `.value` assignment throws), so it fails
+  cleanly with a note to use `--cdp`. Covered by capture unit test, fixture e2e,
+  and a relay unit test (`dogfood-fileupload.mjs`).
 - **Contenteditable / rich-text editor capture** (Gmail, Slack, Notion, comment
   boxes). These are contenteditable divs — they fire `input` (not `change`) and
   have no form `value`, so capture recorded *nothing* and the typed text was

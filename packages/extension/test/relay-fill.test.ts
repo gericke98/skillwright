@@ -43,4 +43,10 @@ describe("fillExpression — relay-injected value setter", () => {
     expect(runFill("#ed", "Hello team")).toBe(true);
     expect(ed.textContent).toBe("Hello team");
   });
+
+  test("fails cleanly on a file input (relay can't upload via JS) — no throw", () => {
+    document.body.innerHTML = `<input id="f" type="file" />`;
+    // Must return false, not throw a SecurityError from assigning .value.
+    expect(runFill("#f", "/path/to/file.pdf")).toBe(false);
+  });
 });

@@ -55,6 +55,10 @@ export function fillExpression(selector: string, value: string): string {
     const el = resolveElement(${JSON.stringify(selector)}, document);
     if (!el) return false;
     el.focus();
+    // A file input can't be set from page JS (assigning .value throws a
+    // SecurityError) — the relay can't upload files in v1; use the --cdp path,
+    // which drives setInputFiles. Fail cleanly rather than throwing.
+    if (el.type === "file") return false;
     // A checkbox/radio carries its meaning in .checked, not .value — capture
     // records the boolean state ("true"/"false"), so drive .checked here.
     if (el.type === "checkbox" || el.type === "radio") {

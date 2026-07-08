@@ -90,6 +90,11 @@ export function buildCaptureStep(
       // replay can setChecked() it (fill()-ing a checkbox throws).
       if (type === "checkbox" || type === "radio") {
         step.value = String((el as HTMLInputElement).checked);
+      } else if (type === "file") {
+        // The browser hides the real path ("C:\fakepath\…") — useless and
+        // unreplayable across machines. Parameterize it: replay demands the file
+        // via --input file=<path> and uses setInputFiles.
+        step.value = "{file}";
       } else {
         const raw = String((el as HTMLInputElement).value ?? "");
         step.value = redactValue(raw, { type });

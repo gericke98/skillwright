@@ -92,6 +92,10 @@ export class PlaywrightStepDriver implements StepDriver {
           if (tag === "SELECT") await loc.selectOption(value, { timeout: this.timeoutMs });
           else if (type === "checkbox" || type === "radio")
             await loc.setChecked(value === "true", { timeout: this.timeoutMs });
+          else if (type === "file")
+            // The file path comes from a runtime --input (applyInputs already
+            // resolved the {file} placeholder); fill() throws on a file input.
+            await loc.setInputFiles(value, { timeout: this.timeoutMs });
           else await loc.fill(value, { timeout: this.timeoutMs });
           return "ok";
         }
