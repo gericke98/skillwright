@@ -37,6 +37,17 @@ const DESTRUCTIVE_VERBS = [
   "approve",
   "wipe",
   "destroy",
+  // Real-world high-consequence verbs (round-up-on-uncertainty; a confirmation
+  // prompt is cheap, an unattended destructive action is not).
+  "deactivate",
+  "terminate",
+  "discard",
+  "revoke",
+  "withdraw",
+  "erase",
+  "uninstall",
+  "unsubscribe",
+  "disconnect",
 ];
 
 /**
