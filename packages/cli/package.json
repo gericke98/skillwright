@@ -4,6 +4,22 @@
   "description": "skillwright CLI — distill browser recordings into Agent Skills and replay them",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gericke98/skillwright.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/gericke98/skillwright#readme",
+  "bugs": "https://github.com/gericke98/skillwright/issues",
+  "keywords": [
+    "browser-automation",
+    "agent-skills",
+    "mcp",
+    "cdp",
+    "chrome-extension",
+    "web-automation",
+    "ai-agents"
+  ],
   "bin": {
     "skillwright": "./bundle/bin.js"
   },

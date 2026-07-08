@@ -47,4 +47,4 @@ The full v1 pipeline is built and green; not yet published to npm.
   severity — retiring the residual risk of the safety gate trusting LLM-inferred
   tags alone. (Live in-extension network capture is a follow-up slice.)
 
-[Unreleased]: https://github.com/santiagogericke/skillwright/commits/main
+[Unreleased]: https://github.com/gericke98/skillwright/commits/master
