@@ -10,11 +10,12 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
-function cmdDistill(argv: string[]): void {
+async function cmdDistill(argv: string[]): Promise<void> {
   const file = argv.find((a) => !a.startsWith("--"));
-  if (!file) fail("usage: bskill distill <recording.json> [--name <slug>]");
+  if (!file) fail("usage: bskill distill <recording.json> [--name <slug>] [--semantic]");
   const nameFlag = argv.indexOf("--name");
   const name = nameFlag >= 0 ? argv[nameFlag + 1] : undefined;
+  const semantic = argv.includes("--semantic");
 
   let recording: Recording;
   try {
@@ -24,7 +25,16 @@ function cmdDistill(argv: string[]): void {
   }
 
   try {
-    const skill = distill(recording!, { name });
+    let skill;
+    if (semantic) {
+      const { distillSemantic } = await import("./distill/semantic");
+      const { createDefaultBackend } = await import("./llm/index");
+      const backend = createDefaultBackend();
+      process.stdout.write(`Distilling with ${backend.name}...\n`);
+      skill = await distillSemantic(recording!, backend, { name });
+    } else {
+      skill = distill(recording!, { name });
+    }
     const dir = writeSkillDirectory(skill, defaultLibraryDir());
     process.stdout.write(`Distilled skill "${skill.slug}" → ${dir}\n`);
   } catch (e) {
@@ -89,7 +99,7 @@ async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
     case "distill":
-      return cmdDistill(rest);
+      return await cmdDistill(rest);
     case "run":
       return cmdRun(rest);
     default:

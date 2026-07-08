@@ -1,0 +1,20 @@
+{
+  "name": "@bskill/evals",
+  "version": "0.0.0",
+  "description": "bskill distiller eval suite — golden recordings scored against the M2 rubric",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bskill/cli": "workspace:*",
+    "@bskill/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
