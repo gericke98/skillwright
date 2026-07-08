@@ -184,6 +184,11 @@ to 1.0:
 - [ ] Publish to npm + Chrome Web Store submission
 - [x] Live network-truth capture (passive CDP observer) + API-replay mode
 - [x] Tier-3 heal over the relay transport (extension ARIA snapshot channel)
+- [x] Real-world hardening — dogfooding public sites fixed 4 bugs (selector
+      priority, a nested-URL secret leak, form-field anchors, selector uniqueness)
+- [ ] **Shadow DOM / web components** — selectors don't yet pierce shadow roots
+      (a real gap for some modern component libraries)
+- [ ] **Iframes** — capture/replay across frame boundaries is not handled yet
 - [ ] Copy-mode install divergence handling on Windows / restricted filesystems
 - [ ] Broaden the eval fixture corpus toward real-world sites
 
