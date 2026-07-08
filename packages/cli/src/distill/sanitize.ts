@@ -46,6 +46,21 @@ export function summarizeSteps(recording: Recording): StepSummary[] {
   });
 }
 
+/** Agent Skills cap `description` frontmatter at 1024 chars. */
+const MAX_DESCRIPTION = 1024;
+
+/**
+ * Make an LLM-inferred description safe for SKILL.md YAML frontmatter: collapse
+ * all whitespace (a raw newline would break the frontmatter block, so no agent
+ * could load the skill), trim, cap at the spec's 1024-char limit, and never
+ * return empty (a blank description is invalid). The frontmatter renderer emits
+ * this as a quoted YAML scalar, which handles any remaining punctuation.
+ */
+export function sanitizeSkillDescription(raw: string): string {
+  const collapsed = raw.replace(/\s+/g, " ").trim().slice(0, MAX_DESCRIPTION);
+  return collapsed || "A browser task captured by skillwright.";
+}
+
 /**
  * Second-pass redaction net (§9): scrub any secret-shaped token that slipped
  * into a rendered output file. Token-wise so it can run over Markdown/JSON

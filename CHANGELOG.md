@@ -35,6 +35,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Malformed SKILL.md frontmatter from an unsafe description** 🩹. The
+  distiller interpolated the (LLM- or title-derived) `description` raw into the
+  YAML frontmatter. A newline, a leading special char, or an over-length value
+  would produce malformed or spec-violating frontmatter — so **no agent could
+  load the skill** (the core "consumable by any agent" contract). The
+  description is now whitespace-collapsed, capped at the Agent Skills 1024-char
+  limit, never empty, and emitted as a quoted YAML scalar. Fixed in both the
+  semantic and zero-LLM distillers; covered by a unit test and an adversarial
+  "hostile description" distill test.
 - **`SKILLWRIGHT_API_KEY` was silently ignored** — the API-backend opt-in was
   broken by the `bskill`→`skillwright` rename. The README and all docs say to
   set `SKILLWRIGHT_API_KEY` to use the direct Anthropic API distiller, but the

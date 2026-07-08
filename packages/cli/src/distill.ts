@@ -9,6 +9,7 @@ import {
 } from "@skillwright/shared";
 import { toSlug } from "./slug";
 import { stepLabel } from "./step-label";
+import { sanitizeSkillDescription } from "./distill/sanitize";
 
 export interface DistillOptions {
   name?: string;
@@ -60,7 +61,7 @@ function renderSkillMd(slug: string, title: string, tagged: TaggedStep[]): strin
   const frontmatter = [
     "---",
     `name: ${slug}`,
-    `description: ${description}`,
+    `description: ${JSON.stringify(sanitizeSkillDescription(description))}`,
     "compatibility: Requires Node 20+, a Chrome CDP endpoint (skillwright relay), and an authenticated session in that browser.",
     "metadata:",
     "  author: skillwright",

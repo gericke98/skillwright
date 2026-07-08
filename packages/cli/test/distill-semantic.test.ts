@@ -63,9 +63,43 @@ describe("distillSemantic — orchestrated LLM distiller", () => {
   test("frontmatter carries the inferred description and declared inputs", async () => {
     const skill = await distillSemantic(approveInvoice, backend(), { name: "approve-invoice" });
     const md = skill.files["SKILL.md"]!;
-    expect(md).toMatch(/^description:\s*Approves a pending invoice/m);
+    // Description is emitted as a quoted YAML scalar for frontmatter safety.
+    expect(md).toMatch(/^description: "Approves a pending invoice by number\."$/m);
     expect(md).toContain("skillwright-inputs");
     expect(md).toContain("invoice_number");
+  });
+
+  test("a hostile LLM description can't break the YAML frontmatter", async () => {
+    // A newline / colon / leading special char / overlong description must not
+    // corrupt the frontmatter, or NO agent could load the skill.
+    const nasty =
+      'Line one\nLine two: with a colon\n#hash "quotes" and [brackets] ' + "x".repeat(1200);
+    const b = new MockBackend((prompt) => {
+      if (prompt.includes("TASK: infer intent")) return { title: "Nasty Task", description: nasty };
+      if (prompt.includes("TASK: extract parameters")) return { params: [] };
+      if (prompt.includes("TASK: classify effects")) return { effects: ["readonly", "mutating", "mutating"] };
+      if (prompt.includes("TASK: narrate steps"))
+        return {
+          steps: [
+            { description: "a", agentStep: false },
+            { description: "b", agentStep: false },
+            { description: "c", agentStep: false },
+          ],
+        };
+      return {};
+    });
+    const skill = await distillSemantic(approveInvoice, b, { name: "nasty" });
+    const md = skill.files["SKILL.md"]!;
+    const fm = md.slice(md.indexOf("---") + 3, md.indexOf("---", 3));
+    // The description line is a single quoted scalar; parse it back with JSON.
+    const line = fm.split("\n").find((l) => l.startsWith("description: "))!;
+    const value = JSON.parse(line.slice("description: ".length)) as string;
+    expect(value).not.toMatch(/[\r\n]/);
+    expect(value.length).toBeLessThanOrEqual(1024);
+    // Every non-indented frontmatter line is a known key — nothing leaked in.
+    for (const l of fm.split("\n").filter((x) => x && !x.startsWith(" "))) {
+      expect(l).toMatch(/^(name|description|compatibility|metadata):/);
+    }
   });
 
   test("rewrites the demo value to a placeholder in the replay script", async () => {

@@ -13,7 +13,7 @@ import { toSlug } from "../slug";
 import { stepLabel } from "../step-label";
 import { distill, type DistillOptions, type SkillDirectory } from "../distill";
 import { SchemaExhaustedError, type LlmBackend } from "../llm/backend";
-import { scrubText } from "./sanitize";
+import { scrubText, sanitizeSkillDescription } from "./sanitize";
 import { inferEffects, inferIntent, inferParams, narrate, type ParamDef, type StepNarrative } from "./passes";
 
 interface RenderedStep {
@@ -46,10 +46,14 @@ function combineEffect(step: Step, llmEffect: EffectTag): EffectTag {
 
 function frontmatter(slug: string, description: string, params: ParamDef[]): string {
   const inputs = params.map((p) => ({ name: p.name, type: p.type, required: p.required }));
+  // Emit description as a quoted YAML scalar over a whitespace-collapsed, length-
+  // capped value: a raw newline or leading special char would break the
+  // frontmatter and no agent could load the skill.
+  const safeDescription = JSON.stringify(sanitizeSkillDescription(description));
   return [
     "---",
     `name: ${slug}`,
-    `description: ${description}`,
+    `description: ${safeDescription}`,
     "compatibility: Requires Node 20+, a Chrome CDP endpoint (skillwright relay), and an authenticated session in that browser.",
     "metadata:",
     "  author: skillwright",
