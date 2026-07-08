@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Validated (no code change)
+
+- **Custom ARIA comboboxes** (`dogfood-combobox.mjs`) — the React-Select /
+  MUI-style click-to-open + click-a-dynamically-revealed-option pattern (a
+  classic replay failure point, unlike a native `<select>`) replays correctly
+  against the canonical W3C ARIA APG example, including resolving the option
+  inside the example's iframe. No fix needed.
+
 ## [0.1.1] - 2026-07-08
 
 ### Added
