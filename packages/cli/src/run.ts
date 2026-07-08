@@ -17,6 +17,8 @@ export interface RunSkillOptions {
   inputs?: Record<string, string>;
   /** Replay steps via their captured request instead of the DOM when available. */
   apiReplay?: boolean;
+  /** Per-step driver timeout in ms; overrides the driver default for slow apps. */
+  timeoutMs?: number;
 }
 
 /**
@@ -39,7 +41,7 @@ export async function runSkillByName(slug: string, opts: RunSkillOptions): Promi
   try {
     const context = browser.contexts()[0] ?? (await browser.newContext());
     const page = context.pages()[0] ?? (await context.newPage());
-    const driver = new PlaywrightStepDriver(page);
+    const driver = new PlaywrightStepDriver(page, opts.timeoutMs);
     const result = await runSkill(steps, driver, {
       confirmDestructive: opts.confirmDestructive,
       heal: buildHealer(),

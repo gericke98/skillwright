@@ -8,6 +8,7 @@ import { defaultLibraryDir } from "./paths";
 import { promote } from "./quarantine";
 import { installSkill, listSkills, syncInstalls, type InstallScope } from "./install";
 import { MissingInputError } from "./apply-inputs";
+import { parseTimeoutMs } from "./run-args";
 
 function fail(msg: string): never {
   process.stderr.write(`skillwright: ${msg}\n`);
@@ -80,12 +81,18 @@ async function cmdRun(argv: string[]): Promise<void> {
   const slug = argv.find((a) => !a.startsWith("--") && !a.includes("="));
   if (!slug) {
     fail(
-      "usage: skillwright run <skill> [--input k=v ...] [--relay [--port N] | --cdp <url>] [--confirm-destructive]",
+      "usage: skillwright run <skill> [--input k=v ...] [--relay [--port N] | --cdp <url>] [--confirm-destructive] [--timeout <seconds>]",
     );
   }
   const confirmDestructive = argv.includes("--confirm-destructive");
   const apiReplay = argv.includes("--api");
   const inputs = parseInputs(argv);
+  const timeoutMs = parseTimeoutMs(argv);
+  if (timeoutMs !== undefined && argv.includes("--relay")) {
+    process.stderr.write(
+      "skillwright: --timeout applies to --cdp replay only; the relay path times out in the extension. Ignoring.\n",
+    );
+  }
 
   try {
     if (argv.includes("--relay")) {
@@ -114,7 +121,7 @@ async function cmdRun(argv: string[]): Promise<void> {
       fail("no endpoint. Use --relay, or --cdp <url> / CHROME_CDP_URL for a debug-profile Chrome.");
     }
     const { runSkillByName } = await import("./run");
-    const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl, inputs, apiReplay });
+    const result = await runSkillByName(slug!, { confirmDestructive, cdpUrl, inputs, apiReplay, timeoutMs });
     return reportResult(slug!, result);
   } catch (e) {
     if (e instanceof MissingInputError) fail(`${e.message} — pass them with --input <name>=<value>`);

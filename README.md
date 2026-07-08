@@ -146,6 +146,7 @@ skillwright distill recording.json --semantic
 # 2. Replay against your real Chrome via the relay:
 skillwright relay                        # hosts the endpoint; pair in the side panel
 skillwright run <skill> --confirm-destructive
+skillwright run <skill> --cdp <url> --timeout 15   # raise the per-step wait for slow apps
 
 # 3. Make it discoverable to your agents (Claude Code + Codex, etc.):
 skillwright install <skill> --project .  # → .claude/skills/ and .agents/skills/

@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`skillwright run --timeout <seconds>`.** Overrides the per-step driver
+  timeout on the `--cdp` replay path. The default (3s) is tuned for the test
+  fixture; real apps (SPA route transitions, slow backends, AJAX spinners) can
+  exceed it, so a user hitting a slow site can now raise the wait without
+  editing code. A missing/non-numeric/zero/negative value is ignored (keeps the
+  default) rather than degrading every step into an instant failure. No-op on
+  the relay path (that times out in the extension) — a note is printed if
+  combined with `--relay`. Async-enabled inputs on real sites were validated to
+  already work via Playwright's auto-wait (`dogfood-dynamic.mjs`).
+
 ## [0.1.0] - 2026-07-08
 
 First tagged release. The full v1 pipeline is built, tested (300+), and CI-green.
