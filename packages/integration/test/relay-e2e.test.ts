@@ -14,7 +14,7 @@ import {
   writeSkillDirectory,
   translateSelector,
   type ReplayStep,
-} from "@bskill/cli";
+} from "bskill";
 import type { Recording } from "@bskill/shared";
 
 /**

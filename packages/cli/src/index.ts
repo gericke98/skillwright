@@ -15,6 +15,17 @@ export { writeSkillDirectory } from "./write-skill";
 export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { defaultLibraryDir } from "./paths";
+export {
+  installSkill,
+  listSkills,
+  syncInstalls,
+  type InstallScope,
+  type InstallOptions,
+  type InstallResult,
+  type InstallLocation,
+  type SkillListing,
+  type LinkMode,
+} from "./install";
 export { gateStep, type GateDecision, type GateContext } from "./safety-gate";
 export {
   runSkill,

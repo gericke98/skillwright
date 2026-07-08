@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@bskill/cli": "workspace:*",
+    "bskill": "workspace:*",
     "@bskill/extension": "workspace:*",
     "@bskill/fixture-app": "workspace:*",
     "@bskill/shared": "workspace:*",

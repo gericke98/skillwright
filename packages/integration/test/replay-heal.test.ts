@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { startFixtureServer, type FixtureServer } from "@bskill/fixture-app";
-import { runSkill, PlaywrightStepDriver, type ReplayStep, type HealFn } from "@bskill/cli";
+import { runSkill, PlaywrightStepDriver, type ReplayStep, type HealFn } from "bskill";
 
 /**
  * Tier-3 heal end-to-end against real Chromium + the fixture app. The delete

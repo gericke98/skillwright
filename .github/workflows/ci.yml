@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Integration tests replay against headless Chromium (Playwright).
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Test (unit + integration + conformance)
+        run: pnpm test
+
+      # LLM distiller evals are NOT run here — they cost tokens and run
+      # on-demand / on prompt-change only (see packages/evals, §13).
+
+      - name: Build publishable CLI bundle
+        run: pnpm --filter bskill bundle
+
+      - name: Build extension
+        run: pnpm --filter @bskill/extension build:crx

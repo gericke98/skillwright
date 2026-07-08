@@ -5,7 +5,7 @@
  * gate fails. This is the M2 release gate — token cost is real, so it runs
  * on-demand, not per-CI-push.
  */
-import { distillSemantic, createDefaultBackend } from "@bskill/cli";
+import { distillSemantic, createDefaultBackend } from "bskill";
 import type { Recording } from "@bskill/shared";
 import { runEvals } from "./runner";
 import { goldenFixtures } from "./fixtures";

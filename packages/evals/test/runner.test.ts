@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { Recording } from "@bskill/shared";
-import type { SkillDirectory } from "@bskill/cli";
+import type { SkillDirectory } from "bskill";
 import { runEvals, type FixtureCase } from "../src/runner";
 
 function recording(steps: Recording["steps"]): Recording {

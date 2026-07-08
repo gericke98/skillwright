@@ -1,25 +1,34 @@
 {
-  "name": "@bskill/cli",
+  "name": "bskill",
   "version": "0.0.0",
-  "description": "bskill CLI — distill recordings into Agent Skills and replay them",
+  "description": "bskill CLI — distill browser recordings into Agent Skills and replay them",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "bskill": "./src/bin.ts"
+    "bskill": "./bundle/bin.js"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "files": [
+    "bundle"
+  ],
+  "publishConfig": {
+    "main": "./bundle/bin.js"
+  },
   "scripts": {
     "build": "tsc --build",
+    "bundle": "node scripts/bundle.mjs",
+    "prepack": "pnpm bundle",
     "test": "vitest run"
   },
   "dependencies": {
-    "@bskill/shared": "workspace:*",
     "playwright": "^1.61.1",
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@bskill/shared": "workspace:*",
     "@types/node": "^22.0.0",
-    "@types/ws": "^8.18.1"
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.24.0"
   }
 }
