@@ -26,7 +26,7 @@ jobs:
 
       # Integration tests replay against headless Chromium (Playwright).
       - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter skillwright exec playwright install --with-deps chromium
 
       - name: Test (unit + integration + conformance)
         run: pnpm test

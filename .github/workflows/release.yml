@@ -29,7 +29,7 @@ jobs:
 
       # Gate the publish on a green build first.
       - run: pnpm typecheck
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter skillwright exec playwright install --with-deps chromium
       - run: pnpm test
 
       # Publish the CLI to npm with provenance. `prepack` builds the bundle.
