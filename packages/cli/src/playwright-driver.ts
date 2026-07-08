@@ -1,5 +1,5 @@
 import type { Locator, Page } from "playwright";
-import type { ReplayStep, StepDriver } from "./replay";
+import type { PageSnapshot, ReplayStep, StepDriver, StepOutcome } from "./replay";
 import { translateSelector } from "./translate-selector";
 
 /**
@@ -27,7 +27,13 @@ export class PlaywrightStepDriver implements StepDriver {
     }
   }
 
-  async execute(step: ReplayStep, selector: string): Promise<"ok" | "fail"> {
+  /** The live page view handed to the tier-3 healer: URL + ARIA snapshot. */
+  async snapshot(): Promise<PageSnapshot> {
+    const aria = await this.page.locator("body").ariaSnapshot();
+    return { url: this.page.url(), aria };
+  }
+
+  async execute(step: ReplayStep, selector: string): Promise<StepOutcome> {
     const loc = this.locator(selector).first();
     try {
       switch (step.type) {

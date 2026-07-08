@@ -11,9 +11,12 @@ a destructive-tagged step is never re-executed without confirmation (safety-gate
 
 **Method:** test-first (TDD), phase-gated. Each phase has a falsifiable gate.
 
-**Status:** P0 ✅ (safety rig already in place — `gateStep` unit suite + `replay.test.ts` initial-phase
-invariants green; new surface is the heal path) · P1 ✅ (tier-3 heal: run-loop integration honoring the
-gate + `StepOutcome` partial-fire guard + LLM healer) · P2 ⏳ next · P3 ⏳.
+**Status:** P0 ✅ · P1 ✅ (tier-3 heal + partial-fire guard + LLM healer) · P2 ✅ (quarantine →
+promote-after-proof + `bskill promote`) · P3 ✅ **— M3 GATE CLOSED.** Tier-3 heal recovers a
+fully-broken destructive selector against real Chromium (with confirmation → row deleted; without →
+blocked, row survives); heal wired into `bskill run` (cdp + relay) with the promoted-selector overlay
+and clean-run confirmation. 203 tests green. Note: heal fires only for drivers that can `snapshot()`
+(Playwright/cdp); relay heal awaits an extension snapshot channel (M4+).
 
 ---
 
