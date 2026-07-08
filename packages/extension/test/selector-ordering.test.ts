@@ -46,4 +46,23 @@ describe("computeSelectorStack — stable text ranks above positional CSS", () =
     expect(nameIdx).toBeGreaterThanOrEqual(0);
     expect(nameIdx).toBeLessThan(phIdx);
   });
+
+  // Found dogfooding a real list: identical "Delete" buttons all led with an
+  // ambiguous text/ selector — the relay would click the WRONG row.
+  test("a non-unique selector is demoted below one that uniquely identifies the element", () => {
+    document.body.innerHTML = `<ul><li><button>Del</button></li><li><button>Del</button></li></ul>`;
+    const second = document.querySelectorAll("button")[1]!;
+    const stack = computeSelectorStack(second);
+    const top = stack[0]!;
+    expect(top).not.toBe("text/Del"); // ambiguous (matches 2) — must not lead
+    const matches = document.querySelectorAll(top);
+    expect(matches).toHaveLength(1); // the leading selector uniquely resolves
+    expect(matches[0]).toBe(second);
+  });
+
+  test("unique selectors keep their priority order (aria before css)", () => {
+    document.body.innerHTML = `<button aria-label="Only one">x</button>`;
+    const stack = computeSelectorStack(document.querySelector("button")!);
+    expect(stack[0]).toBe("aria/Only one");
+  });
 });

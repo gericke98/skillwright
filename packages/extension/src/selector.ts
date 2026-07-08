@@ -55,6 +55,34 @@ function textSelector(el: Element): string | undefined {
   return undefined;
 }
 
+/** How many elements in `el`'s document a selector matches (aria/ and text/ are
+ * not CSS, so they're counted structurally). Used to demote ambiguous selectors. */
+function matchCount(el: Element, selector: string): number {
+  const doc = el.ownerDocument;
+  if (!doc) return 1;
+  if (selector.startsWith("aria/")) {
+    const name = selector.slice(5);
+    let n = 0;
+    for (const e of doc.querySelectorAll("[aria-label]")) {
+      if (e.getAttribute("aria-label")?.trim() === name) n++;
+    }
+    return n;
+  }
+  if (selector.startsWith("text/")) {
+    const text = selector.slice(5);
+    let n = 0;
+    for (const e of doc.querySelectorAll("button, a, [role], input, label")) {
+      if (e.textContent?.trim() === text) n++;
+    }
+    return n || 1;
+  }
+  try {
+    return doc.querySelectorAll(selector).length;
+  } catch {
+    return 2; // an invalid selector is treated as non-unique (demoted)
+  }
+}
+
 export function computeSelectorStack(el: Element): string[] {
   const out: string[] = [];
   const push = (s: string | undefined) => {
@@ -76,5 +104,12 @@ export function computeSelectorStack(el: Element): string[] {
   push(textSelector(el));
   push(cssPath(el));
 
-  return out;
+  // Uniqueness-aware ordering: a selector that matches MULTIPLE elements would
+  // let the relay click the wrong one, so promote selectors that uniquely
+  // identify the target and demote ambiguous ones (stable priority within each
+  // group). The positional cssPath is unique by construction, so a unique
+  // anchor always leads.
+  const unique = out.filter((s) => matchCount(el, s) === 1);
+  const ambiguous = out.filter((s) => !unique.includes(s));
+  return [...unique, ...ambiguous];
 }
