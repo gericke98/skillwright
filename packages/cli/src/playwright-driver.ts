@@ -81,9 +81,14 @@ export class PlaywrightStepDriver implements StepDriver {
       switch (step.type) {
         case "change":
         case "input":
-        case "select":
-          await loc.fill(step.value ?? "", { timeout: this.timeoutMs });
+        case "select": {
+          const value = step.value ?? "";
+          // A <select> can't be filled — it must be selected by option value.
+          const tag = await loc.evaluate((el) => el.tagName).catch(() => "");
+          if (tag === "SELECT") await loc.selectOption(value, { timeout: this.timeoutMs });
+          else await loc.fill(value, { timeout: this.timeoutMs });
           return "ok";
+        }
         case "click":
           await loc.click({ timeout: this.timeoutMs });
           return "ok";

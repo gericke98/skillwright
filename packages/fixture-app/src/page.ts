@@ -83,6 +83,11 @@ export function renderPage(variant: Variant = "a"): string {
 
     <div class="toolbar">
       <input type="text" ${searchId} aria-label="Search invoices" ${testAttr}="search" placeholder="Search by invoice number…" />
+      <select aria-label="Status filter" ${testAttr}="status-filter">
+        <option value="all">All</option>
+        <option value="pending">Pending</option>
+        <option value="paid">Paid</option>
+      </select>
     </div>
 
     <table>
