@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { SkillDirectory } from "@bskill/cli";
+import type { SkillDirectory } from "bskill";
 import { scoreFixture, type Expectations } from "../src/rubric";
 
 /**

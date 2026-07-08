@@ -1,5 +1,5 @@
 import type { Recording } from "@bskill/shared";
-import type { SkillDirectory } from "@bskill/cli";
+import type { SkillDirectory } from "bskill";
 import { scoreFixture, type Expectations, type FixtureScore } from "./rubric";
 
 /** Any distiller: zero-LLM (M1) or the real M2 pipeline, sync or async. */

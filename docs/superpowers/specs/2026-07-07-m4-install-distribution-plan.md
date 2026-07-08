@@ -10,8 +10,9 @@ the whole distill+run pipeline (M1–M3).
 
 **Method:** test-first (TDD), phase-gated.
 
-**Status:** P0 ✅ (install/list/sync + CLI; symlink-preferred, copy-fallback tracked stale-able;
-verified end-to-end) · P1 ⏳ next · P2 ⏳ · P3 ⏳.
+**Status:** P0 ✅ · P1 ✅ (package renamed `bskill`; esbuild split-bundle → `bundle/` inlines
+@bskill/shared, keeps playwright/ws external and lazily-loaded; shipped bin runs `distill`/`list`
+standalone from the packed tarball with zero deps installed) · P2 ⏳ next · P3 ⏳.
 
 ---
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { distill } from "@bskill/cli";
+import { distill } from "bskill";
 import { runEvals } from "../src/runner";
 import { goldenFixtures } from "../src/fixtures";
 

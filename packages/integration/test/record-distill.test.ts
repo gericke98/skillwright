@@ -2,7 +2,7 @@
 import { describe, expect, test } from "vitest";
 import { renderPage } from "@bskill/fixture-app";
 import { computeSelectorStack, redactValue } from "@bskill/extension";
-import { distill } from "@bskill/cli";
+import { distill } from "bskill";
 import type { Recording, Step } from "@bskill/shared";
 
 /**
