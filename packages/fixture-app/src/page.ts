@@ -144,6 +144,12 @@ export function renderPage(variant: Variant = "a"): string {
         api("GET", "/api/invoices?q=" + encodeURIComponent(t.value || ""));
       }
     });
+    document.addEventListener("keydown", (e) => {
+      const t = e.target;
+      if (e.key === "Enter" && t instanceof HTMLElement && (t.getAttribute("aria-label") || "").startsWith("Search")) {
+        document.getElementById("result").textContent = "Searched " + (t.value || "");
+      }
+    });
   </script>
 </body>
 </html>`;

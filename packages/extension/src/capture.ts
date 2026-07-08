@@ -16,6 +16,33 @@ export function eventTarget(event: Event): Element | undefined {
   return first instanceof Element ? first : undefined;
 }
 
+/** Meaningful keys worth recording — navigation/submission keys, not the plain
+ * character keystrokes already captured by the `change` event's final value. */
+const SPECIAL_KEYS = new Set([
+  "Enter",
+  "Escape",
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+]);
+
+/**
+ * Whether a keydown is worth capturing: a special key (Enter submits a form,
+ * Escape closes, arrows navigate) or ANY key pressed with a modifier (a keyboard
+ * shortcut). Plain typing is captured via the field's final `change` value.
+ */
+export function shouldCaptureKey(event: {
+  key: string;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+}): boolean {
+  if (event.ctrlKey || event.metaKey || event.altKey) return true;
+  return SPECIAL_KEYS.has(event.key);
+}
+
 /** The accessible name the effect classifier reasons about. */
 function accessibleName(el: Element): string | undefined {
   const aria = el.getAttribute("aria-label")?.trim();
@@ -30,7 +57,12 @@ function accessibleName(el: Element): string | undefined {
  * the redacted field value. This is the pure heart of capture; the content
  * script's event listeners are a thin shell that calls it.
  */
-export function buildCaptureStep(el: Element, action: string, now: () => number = () => Date.now()): Step {
+export function buildCaptureStep(
+  el: Element,
+  action: string,
+  now: () => number = () => Date.now(),
+  key?: string,
+): Step {
   const label = accessibleName(el);
   const step: Step = {
     type: action,
@@ -46,6 +78,8 @@ export function buildCaptureStep(el: Element, action: string, now: () => number 
     const type = el.getAttribute("type") ?? undefined;
     step.value = redactValue(raw, { type });
   }
+
+  if (action === "keydown" && key) step.key = key;
 
   return step;
 }

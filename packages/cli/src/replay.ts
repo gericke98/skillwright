@@ -17,6 +17,8 @@ export interface ReplayStep {
   value?: string;
   /** For navigate steps: the (redacted) destination URL. */
   url?: string;
+  /** For keydown steps: the key to press (e.g. "Enter"). */
+  key?: string;
   /** The primary network call this step fired — enables API-replay. */
   request?: StepRequest;
 }

@@ -47,6 +47,8 @@ export interface Step {
   timestamp?: number;
   /** Network requests attributed to this step (Capture v2 correlation). */
   requests?: CapturedRequest[];
+  /** For a keydown step: the key pressed (e.g. "Enter"). */
+  key?: string;
   [key: string]: unknown;
 }
 

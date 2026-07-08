@@ -37,6 +37,17 @@ function existsExpression(selector: string): string {
   })()`;
 }
 
+/** Expression that focuses `selector`; returns true on success. */
+function focusExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    const el = resolveElement(${JSON.stringify(selector)}, document);
+    if (!el) return false;
+    el.focus();
+    return true;
+  })()`;
+}
+
 /** Expression that fills `selector` with `value`; returns true on success. */
 function fillExpression(selector: string, value: string): string {
   return `(() => {
@@ -78,7 +89,18 @@ interface PerformInput {
   action: string;
   selector: string;
   value?: string;
+  key?: string;
 }
+
+const VIRTUAL_KEYS: Record<string, number> = {
+  Enter: 13,
+  Escape: 27,
+  Tab: 9,
+  ArrowUp: 38,
+  ArrowDown: 40,
+  ArrowLeft: 37,
+  ArrowRight: 39,
+};
 
 async function performStep(
   tabId: number,
@@ -128,6 +150,16 @@ async function performStep(
     if (cmd.action === "change" || cmd.action === "input" || cmd.action === "select") {
       const ok = (await evaluate(tabId, fillExpression(cmd.selector, cmd.value ?? ""))) === true;
       return { ok, error: ok ? undefined : "element not found" };
+    }
+    if (cmd.action === "keydown") {
+      const focused = (await evaluate(tabId, focusExpression(cmd.selector))) === true;
+      if (!focused) return { ok: false, error: "element not found" };
+      const key = cmd.key || "Enter";
+      const vk = VIRTUAL_KEYS[key] ?? 0;
+      const base = { key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
+      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", { type: "keyDown", ...base });
+      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", { type: "keyUp", ...base });
+      return { ok: true };
     }
     if (cmd.action === "navigate") return { ok: true };
     return { ok: false, error: `unsupported action ${cmd.action}` };

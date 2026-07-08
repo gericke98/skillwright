@@ -4,6 +4,7 @@ export interface PerformRequest {
   action: string;
   selector: string;
   value?: string;
+  key?: string;
 }
 
 export interface PerformResult {
@@ -31,7 +32,12 @@ export class RelayStepDriver implements StepDriver {
 
   async execute(step: ReplayStep, selector: string): Promise<"ok" | "fail"> {
     try {
-      const res = await this.transport.send({ action: step.type, selector, value: step.value });
+      const res = await this.transport.send({
+        action: step.type,
+        selector,
+        value: step.value,
+        key: step.key,
+      });
       return res.ok ? "ok" : "fail";
     } catch {
       return "fail";

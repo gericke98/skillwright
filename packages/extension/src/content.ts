@@ -4,7 +4,7 @@
  * forwards steps to the background worker. Honors R2: captures nothing until the
  * background says a recording is active.
  */
-import { buildCaptureStep, eventTarget } from "./capture";
+import { buildCaptureStep, eventTarget, shouldCaptureKey } from "./capture";
 import type { CaptureMessage, RecStateMessage, RecStateReply } from "./messages";
 
 let recording = false;
@@ -45,9 +45,22 @@ function onEvent(action: string) {
   };
 }
 
+function onKeydown(event: KeyboardEvent): void {
+  if (!recording) return;
+  if (!shouldCaptureKey(event)) return; // skip plain typing (captured via change)
+  const target = eventTarget(event);
+  if (!target) return;
+  try {
+    send({ kind: "step", step: buildCaptureStep(target, "keydown", undefined, event.key) });
+  } catch {
+    /* never let capture break the page */
+  }
+}
+
 // Capture phase so we observe the interaction before the page's own handlers.
 document.addEventListener("click", onEvent("click"), true);
 document.addEventListener("change", onEvent("change"), true);
+document.addEventListener("keydown", onKeydown, true);
 
 // Navigations are reported by the background via webNavigation; nothing to do
 // here for them. Keydown/scroll coalescing lands with richer capture later.

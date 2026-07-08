@@ -25,6 +25,7 @@ export interface PerformMessage {
   action: string;
   selector: string;
   value?: string;
+  key?: string;
 }
 
 /** extension → relay: the outcome of a perform. */

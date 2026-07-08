@@ -92,6 +92,9 @@ export class PlaywrightStepDriver implements StepDriver {
         case "click":
           await loc.click({ timeout: this.timeoutMs });
           return "ok";
+        case "keydown":
+          await loc.press(step.key ?? "Enter", { timeout: this.timeoutMs });
+          return "ok";
         default:
           return "ok";
       }
