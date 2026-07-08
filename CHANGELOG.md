@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`skillwright doctor`** — a first-run environment preflight. First-run
+  failures (no LLM backend on PATH, missing Chromium, an unwritable library, a
+  misconfigured API key) are the most common reason a first real capture fails
+  silently; `doctor` surfaces them with clear remediation and a non-zero exit on
+  any hard failure. Checks Node version, the distiller backend (agent-cli
+  binary on PATH or `SKILLWRIGHT_API_KEY`), the skill library's writability,
+  Chromium for `--cdp` replay, and the replay endpoint.
 - **File-upload capture + replay** (found dogfooding). A `<input type=file>`
   can't be `fill()`-ed (throws) and its captured value is the browser's useless
   `C:\fakepath\…` — so a file-upload step failed on replay with a cryptic error.

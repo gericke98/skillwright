@@ -145,6 +145,9 @@ npm i -g skillwright                  # or: npx skillwright <command>
 ## Quickstart
 
 ```bash
+# 0. Check your environment is ready (LLM backend, Chromium, writable library):
+skillwright doctor
+
 # 1. Record in Chrome via the side panel → it saves recording.json. Distill it:
 skillwright distill recording.json --semantic
 

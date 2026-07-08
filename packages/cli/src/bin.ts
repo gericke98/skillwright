@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MultiSegmentError, type Recording } from "@skillwright/shared";
 import { distill } from "./distill";
@@ -9,6 +9,7 @@ import { promote } from "./quarantine";
 import { installSkill, listSkills, syncInstalls, type InstallScope } from "./install";
 import { MissingInputError } from "./apply-inputs";
 import { parseTimeoutMs } from "./run-args";
+import { runDoctor, type DoctorProbes } from "./doctor";
 
 function fail(msg: string): never {
   process.stderr.write(`skillwright: ${msg}\n`);
@@ -227,6 +228,61 @@ async function cmdMcp(): Promise<void> {
   });
 }
 
+async function checkChromiumInstalled(): Promise<boolean> {
+  // Resolve Playwright's Chromium executable path without launching it.
+  try {
+    const { chromium } = await import("playwright");
+    const p = chromium.executablePath();
+    return !!p && existsSync(p);
+  } catch {
+    return false;
+  }
+}
+
+async function cmdDoctor(): Promise<void> {
+  const chromiumOk = await checkChromiumInstalled();
+  const probes: DoctorProbes = {
+    env: process.env,
+    which: (bin) => {
+      const dirs = (process.env.PATH ?? "").split(":").filter(Boolean);
+      return dirs.some((d) => {
+        try {
+          accessSync(join(d, bin), constants.X_OK);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    },
+    canWrite: (dir) => {
+      try {
+        mkdirSync(dir, { recursive: true });
+        const probe = join(dir, ".skw-write-probe");
+        writeFileSync(probe, "");
+        rmSync(probe);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    chromiumInstalled: () => chromiumOk,
+    nodeMajor: Number.parseInt(process.versions.node.split(".")[0]!, 10),
+  };
+
+  const report = runDoctor(probes);
+  const icon = { pass: "✓", warn: "⚠", fail: "✗" } as const;
+  process.stdout.write("skillwright doctor\n\n");
+  for (const c of report.checks) {
+    process.stdout.write(`  ${icon[c.status]} ${c.name}: ${c.detail}\n`);
+  }
+  process.stdout.write(
+    report.ok
+      ? "\nReady. Record in the side panel, then `skillwright distill` and `skillwright run`.\n"
+      : "\nNot ready — resolve the ✗ items above first.\n",
+  );
+  if (!report.ok) process.exit(1);
+}
+
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
@@ -244,9 +300,11 @@ async function main(): Promise<void> {
       return cmdSync();
     case "mcp":
       return await cmdMcp();
+    case "doctor":
+      return await cmdDoctor();
     default:
       fail(
-        `unknown command "${cmd ?? ""}". commands: distill, run, promote, install, list, sync, mcp`,
+        `unknown command "${cmd ?? ""}". commands: distill, run, promote, install, list, sync, mcp, doctor`,
       );
   }
 }
