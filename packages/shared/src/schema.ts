@@ -18,11 +18,33 @@ export const EFFECT_SEVERITY: readonly EffectTag[] = ["readonly", "mutating", "d
 /** A fallback stack of selectors for one target, most-stable first. */
 export type SelectorStack = string[][];
 
+/**
+ * A network request observed during capture (Capture v2). The HTTP method is
+ * ground-truth effect evidence: a `DELETE` firing proves a destructive action
+ * more reliably than any label or LLM inference. URLs are redacted like every
+ * other captured URL before they land in the recording.
+ */
+export interface CapturedRequest {
+  method: string;
+  /** Redacted request URL. */
+  url: string;
+  /** Response status, if observed. */
+  status?: number;
+  /** CDP resource type, e.g. "XHR", "Fetch", "Document". */
+  resourceType?: string;
+  /** Capture-time timestamp (ms) — used to correlate the request to a step. */
+  timestamp: number;
+}
+
 export interface Step {
   type: string;
   selectors?: SelectorStack;
   /** Assigned by the distiller; absent on a freshly captured recording. */
   effect?: EffectTag;
+  /** Capture-time timestamp (ms), for correlating network requests. */
+  timestamp?: number;
+  /** Network requests attributed to this step (Capture v2 correlation). */
+  requests?: CapturedRequest[];
   [key: string]: unknown;
 }
 

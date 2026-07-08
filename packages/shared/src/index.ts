@@ -5,7 +5,9 @@ export type {
   BskillNamespace,
   EffectTag,
   SelectorStack,
+  CapturedRequest,
 } from "./schema";
+export { deriveNetworkEffect, correlateRequests } from "./network-effect";
 export { EFFECT_SEVERITY } from "./schema";
 export { roundUpEffect } from "./effect";
 export { classifyStepEffect, type StepEffectInput } from "./classify-effect";

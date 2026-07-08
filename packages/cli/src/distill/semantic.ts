@@ -1,6 +1,7 @@
 import {
   assertSingleSegment,
   classifyStepEffect,
+  deriveNetworkEffect,
   redactUrl,
   redactValue,
   roundUpEffect,
@@ -38,7 +39,9 @@ function rewriteValue(raw: string, params: ParamDef[]): string {
  * model that under-tags a destructive control. */
 function combineEffect(step: Step, llmEffect: EffectTag): EffectTag {
   const heuristic = classifyStepEffect({ action: step.type, label: stepLabel(step) });
-  return roundUpEffect([llmEffect, heuristic]);
+  // Network truth (the HTTP method the step fired) is a non-LLM floor.
+  const network = deriveNetworkEffect(step.requests ?? []);
+  return roundUpEffect(network ? [llmEffect, heuristic, network] : [llmEffect, heuristic]);
 }
 
 function frontmatter(slug: string, description: string, params: ParamDef[]): string {
