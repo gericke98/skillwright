@@ -6,26 +6,45 @@
  *
  * Mirrors the capture side: `aria/<name>` → aria-label, `text/<text>` → a leaf
  * element whose trimmed text matches exactly, everything else → querySelector.
+ * PIERCES open shadow DOM (web components) by searching every shadow root too.
  */
 export function resolveElement(selector: string, doc: Document): Element | null {
+  // Collect the document root plus every open shadow root (recursively) so the
+  // search reaches elements inside web components.
+  function allRoots(root: Document | ShadowRoot): Array<Document | ShadowRoot> {
+    const roots: Array<Document | ShadowRoot> = [root];
+    for (const el of Array.from(root.querySelectorAll("*"))) {
+      const sr = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+      if (sr) roots.push(...allRoots(sr));
+    }
+    return roots;
+  }
+  const roots = allRoots(doc);
+
   if (selector.startsWith("aria/")) {
     const name = selector.slice(5);
-    const all = doc.querySelectorAll("[aria-label]");
-    for (const el of Array.from(all)) {
-      if (el.getAttribute("aria-label") === name) return el;
+    for (const root of roots) {
+      for (const el of Array.from(root.querySelectorAll("[aria-label]"))) {
+        if (el.getAttribute("aria-label") === name) return el;
+      }
     }
     return null;
   }
   if (selector.startsWith("text/")) {
     const text = selector.slice(5);
-    const all = doc.querySelectorAll("*");
-    for (const el of Array.from(all)) {
-      if (el.children.length === 0 && el.textContent?.trim() === text) return el;
+    for (const root of roots) {
+      for (const el of Array.from(root.querySelectorAll("*"))) {
+        if (el.children.length === 0 && el.textContent?.trim() === text) return el;
+      }
     }
     return null;
   }
   try {
-    return doc.querySelector(selector);
+    for (const root of roots) {
+      const found = root.querySelector(selector);
+      if (found) return found;
+    }
+    return null;
   } catch {
     return null;
   }

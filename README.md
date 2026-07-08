@@ -186,8 +186,11 @@ to 1.0:
 - [x] Tier-3 heal over the relay transport (extension ARIA snapshot channel)
 - [x] Real-world hardening — dogfooding public sites fixed 4 bugs (selector
       priority, a nested-URL secret leak, form-field anchors, selector uniqueness)
-- [ ] **Shadow DOM / web components** — selectors don't yet pierce shadow roots
-      (a real gap for some modern component libraries)
+- [x] **Shadow DOM replay** — both replay paths pierce open shadow roots
+      (Playwright natively; the relay's resolver now recurses shadow roots)
+- [ ] **Shadow DOM capture** — capturing *through* a shadow boundary still hits
+      event retargeting (the listener sees the host); replay works once a
+      shadow-piercing selector exists
 - [ ] **Iframes** — capture/replay across frame boundaries is not handled yet
 - [ ] Copy-mode install divergence handling on Windows / restricted filesystems
 - [ ] Broaden the eval fixture corpus toward real-world sites
