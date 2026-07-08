@@ -111,4 +111,27 @@ export const goldenFixtures: FixtureCase[] = [
       frontmatterKeys: ["name", "description"],
     },
   },
+  {
+    // Network-truth: a BENIGN label ("Apply") that fires a DELETE. Only the
+    // captured HTTP method proves the step is destructive — the label/heuristic
+    // alone would call it mutating. Guards that network-truth effect works.
+    name: "network-truth-delete",
+    recording: rec("Remove a record", [
+      { type: "navigate", url: "https://app.example.com/records" },
+      { type: "change", selectors: [["aria/Record id"]], value: "REC-9" },
+      {
+        type: "click",
+        selectors: [["aria/Apply"]],
+        requests: [
+          { method: "DELETE", url: "https://app.example.com/api/records/REC-9", timestamp: 1 },
+        ],
+      },
+    ]),
+    expectations: {
+      requiredParams: [{ name: "record_id", demoValue: "REC-9" }],
+      destructiveStepIndices: [2],
+      secrets: [],
+      frontmatterKeys: ["name", "description"],
+    },
+  },
 ];
