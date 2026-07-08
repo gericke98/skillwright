@@ -16,6 +16,19 @@ export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { defaultLibraryDir } from "./paths";
 export {
+  parseSkillMeta,
+  skillToInputSchema,
+  listSkillTools,
+  handleMcpRequest,
+  startMcpServer,
+  type SkillInput,
+  type McpTool,
+  type McpRunner,
+  type JsonRpcRequest,
+  type JsonRpcResponse,
+  type McpServerOptions,
+} from "./mcp/index";
+export {
   installSkill,
   listSkills,
   syncInstalls,

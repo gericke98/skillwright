@@ -150,12 +150,23 @@ skillwright promote <skill>              # promote a proven heal to canonical
 The distiller backend is pluggable: **agent-cli** by default (autodetects
 `claude` / `codex` / `gemini`), or the **Anthropic API** via `SKILLWRIGHT_API_KEY`.
 
-## Two ways to consume a skill
+## Consume a skill from any agent
 
 - **Script mode** — an agent runs `skillwright run <skill>` (deterministic,
   zero-LLM unless a heal is needed).
 - **Semantic mode** — an agent with its own browser tools reads the SKILL.md and
   follows the steps; the walkthrough's selector stacks make that reliable.
+- **MCP mode** — `skillwright mcp` runs a Model Context Protocol server that
+  exposes every installed skill as a callable **tool**, so agents that consume
+  tools (OpenAI, LangGraph, Cursor, Claude, …) can list and run your skills:
+
+  ```jsonc
+  // in any MCP client's config
+  { "mcpServers": { "skillwright": { "command": "skillwright", "args": ["mcp"] } } }
+  ```
+
+  Discovery via `.claude/skills` / `.agents/skills` covers Claude Code, Codex, and
+  Cursor; the MCP server covers everything else. Same skill, every agent.
 
 ## Status & roadmap
 

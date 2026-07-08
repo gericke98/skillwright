@@ -27,6 +27,10 @@ The full v1 pipeline is built and green; not yet published to npm.
   symlink skills into `.claude/skills/` and `.agents/skills/`; publishable npm
   package; CI + tag-driven release workflows; verified executable in script mode
   from a non-Anthropic agent (Codex CLI).
+- **MCP facade.** `skillwright mcp` runs a Model Context Protocol stdio server
+  exposing every installed skill as a callable tool, so tool-consuming agents
+  (OpenAI, LangGraph, Cursor, …) can run skills too — not just SKILL.md readers.
+  Destructive steps stay gated (surfaced as an MCP error unless opted in).
 
 ### Security
 
