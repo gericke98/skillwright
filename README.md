@@ -162,6 +162,11 @@ skillwright list                         # library + install locations
 skillwright promote <skill>              # promote a proven heal to canonical
 ```
 
+Recording your own day-to-day tasks? See the
+**[real-world recording guide](docs/recording-real-world-tasks.md)** — what
+captures cleanly, handling slow apps, file uploads, relay vs. `--cdp`, safety,
+and troubleshooting.
+
 The distiller backend is pluggable: **agent-cli** by default (autodetects
 `claude` / `codex` / `gemini`), or the **Anthropic API** via `SKILLWRIGHT_API_KEY`.
 
