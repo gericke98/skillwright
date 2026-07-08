@@ -16,6 +16,16 @@ export function resolveElement(selector: string, doc: Document): Element | null 
     for (const el of Array.from(root.querySelectorAll("*"))) {
       const sr = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
       if (sr) roots.push(...allRoots(sr));
+      // Same-origin iframes: descend into their document. Cross-origin frames
+      // throw on access (a browser security boundary) — skip them.
+      if (el.tagName === "IFRAME") {
+        try {
+          const idoc = (el as HTMLIFrameElement).contentDocument;
+          if (idoc) roots.push(...allRoots(idoc));
+        } catch {
+          /* cross-origin — inaccessible */
+        }
+      }
     }
     return roots;
   }

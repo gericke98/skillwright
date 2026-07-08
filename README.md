@@ -191,7 +191,9 @@ to 1.0:
 - [ ] **Shadow DOM capture** — capturing *through* a shadow boundary still hits
       event retargeting (the listener sees the host); replay works once a
       shadow-piercing selector exists
-- [ ] **Iframes** — capture/replay across frame boundaries is not handled yet
+- [x] **Same-origin iframes (relay replay)** — the relay resolver now pierces
+      same-origin iframe documents; cross-origin frames are a hard browser
+      boundary. Playwright-path iframe traversal + capture are still open.
 - [ ] Copy-mode install divergence handling on Windows / restricted filesystems
 - [ ] Broaden the eval fixture corpus toward real-world sites
 
