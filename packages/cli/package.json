@@ -1,6 +1,6 @@
 {
   "name": "skillwright",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "skillwright CLI — distill browser recordings into Agent Skills and replay them",
   "license": "MIT",
   "type": "module",
