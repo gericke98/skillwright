@@ -150,6 +150,36 @@ function cmdSync(): void {
   process.stdout.write(`Refreshed ${n} copy-mode install(s).\n`);
 }
 
+async function cmdMcp(): Promise<void> {
+  const { startMcpServer } = await import("./mcp/index");
+  const { runSkillByName } = await import("./run");
+  // Expose installed skills as MCP tools for any MCP client. Each tool call runs
+  // the skill against a CDP endpoint; destructive steps stay gated (opt in per
+  // call with confirm_destructive:true). stdout is the JSON-RPC channel.
+  await startMcpServer({
+    input: process.stdin,
+    output: process.stdout,
+    runSkill: async (slug, inputs) => {
+      const cdpUrl = process.env.CHROME_CDP_URL ?? "";
+      if (!cdpUrl) {
+        return {
+          status: "failed",
+          report: {
+            stepIndex: -1,
+            effect: "readonly",
+            selectorsTried: [],
+            reason: "no CDP endpoint — start `skillwright relay` and set CHROME_CDP_URL",
+          },
+        };
+      }
+      return runSkillByName(slug, {
+        confirmDestructive: inputs.confirm_destructive === true,
+        cdpUrl,
+      });
+    },
+  });
+}
+
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
@@ -165,8 +195,12 @@ async function main(): Promise<void> {
       return cmdList();
     case "sync":
       return cmdSync();
+    case "mcp":
+      return await cmdMcp();
     default:
-      fail(`unknown command "${cmd ?? ""}". commands: distill, run, promote, install, list, sync`);
+      fail(
+        `unknown command "${cmd ?? ""}". commands: distill, run, promote, install, list, sync, mcp`,
+      );
   }
 }
 
