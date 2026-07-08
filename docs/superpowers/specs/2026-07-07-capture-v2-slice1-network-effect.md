@@ -11,10 +11,11 @@ live CDP capture in the extension is a follow-up slice.
 
 **Method:** test-first (TDD), phase-gated.
 
-**Status:** P0 ✅ (schema + `deriveNetworkEffect` + `correlateRequests`) · P1 ✅ (fused into all three
-effect paths — zero-LLM distill, semantic distill, `toReplaySteps`) **— slice-1 gate met: a DELETE
-request raises a benign/under-tagged step to destructive.** · P2 (extension live capture) ⏳ follow-up.
-225 tests green.
+**Status:** P0 ✅ · P1 ✅ · **P2 ✅ — live network capture landed.** A passive CDP observer
+(`NetworkCapturer` over a `CdpLike` interface) captures requests via Playwright's CDPSession (verified
+e2e: a real DELETE → captured → correlated → `destructive`) AND via a `chrome.debugger` adapter wired
+into the extension recording path (attach on start, correlate + detach on stop). The fixture now fires
+real GET/POST/DELETE traffic. Full loop (capture + fusion) is real and verified headlessly. 255 tests.
 
 ---
 

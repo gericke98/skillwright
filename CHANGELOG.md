@@ -41,10 +41,12 @@ The full v1 pipeline is built and green; not yet published to npm.
 - Secret redaction at capture time and again during distillation, enforced by
   adversarial eval fixtures (no secret survives in any generated file).
 - Localhost-only relay with two-party, constant-time token auth.
-- **Network-truth effect signal (Capture v2, slice 1):** effect tags can now be
-  derived from the HTTP method a step fired (`GET`→readonly, `POST/PUT/PATCH`→
-  mutating, `DELETE`→destructive) and fused as a non-LLM floor that can only raise
-  severity — retiring the residual risk of the safety gate trusting LLM-inferred
-  tags alone. (Live in-extension network capture is a follow-up slice.)
+- **Network-truth effect signal (Capture v2):** effect tags can now be derived
+  from the HTTP method a step fired (`GET`→readonly, `POST/PUT/PATCH`→mutating,
+  `DELETE`→destructive) and fused as a non-LLM floor that can only raise severity —
+  retiring the residual risk of the safety gate trusting LLM-inferred tags alone.
+  A passive CDP network observer captures the traffic (via Playwright CDPSession
+  and a `chrome.debugger` adapter wired into the extension recording path),
+  correlating requests to the steps that fired them.
 
 [Unreleased]: https://github.com/gericke98/skillwright/commits/master

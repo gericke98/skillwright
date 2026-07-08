@@ -4,6 +4,7 @@
 
 **Show your browser a task once. Get a skill any agent can run — forever.**
 
+[![CI](https://github.com/gericke98/skillwright/actions/workflows/ci.yml/badge.svg)](https://github.com/gericke98/skillwright/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: pre-1.0](https://img.shields.io/badge/status-pre--1.0-orange.svg)](CHANGELOG.md)
 [![Built with TDD](https://img.shields.io/badge/built%20with-TDD-brightgreen.svg)](CONTRIBUTING.md)
