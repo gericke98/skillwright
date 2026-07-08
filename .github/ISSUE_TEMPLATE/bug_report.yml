@@ -1,0 +1,58 @@
+name: Bug report
+description: Something isn't working as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Do not paste secrets, tokens, or full page
+        contents** — skillwright redacts on capture, but issue text is public.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. skillwright record ...
+        2. skillwright distill ...
+        3. skillwright run ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Capture (extension)
+        - Distill (LLM / skill generation)
+        - Replay / relay
+        - Heal / promote
+        - Install / CLI
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: skillwright version, OS, Node version, Chrome version, LLM backend.
+      placeholder: |
+        skillwright: x.y.z
+        OS: macOS 15
+        Node: 20.x
+        Chrome: 1xx
+        backend: agent-cli (claude) / api
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Failure report / logs
+      description: The structured JSON failure report if `skillwright run` emitted one. Redact anything sensitive.
+      render: shell

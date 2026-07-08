@@ -1,6 +1,6 @@
 # M4 — Install + Distribution (Build Plan)
 
-**Milestone (spec §14.4):** `bskill install`, npm publish, extension delivery, release CI, hardened
+**Milestone (spec §14.4):** `skillwright install`, npm publish, extension delivery, release CI, hardened
 two-party auth.
 **Gate:** fresh machine → working install from public artifacts, AND the installed skill executes in
 script mode from a non-Anthropic agent (Codex CLI or equivalent) — closing success criterion 4.
@@ -12,7 +12,7 @@ the whole distill+run pipeline (M1–M3).
 
 **Status:** P0 ✅ · P1 ✅ · P2 ✅ · P3 ✅ **— M4 GATE CLOSED (criterion 4).** Real **Codex CLI**
 (non-Anthropic agent) discovered the skill in `.agents/skills/` (quoted its description + parsed the
-`[destructive]` effect tag) and executed it in **script mode** (`bskill run <slug>` → dispatched).
+`[destructive]` effect tag) and executed it in **script mode** (`skillwright run <slug>` → dispatched).
 Deterministic acceptance in `docs/acceptance/m4-cross-agent.sh`. The "public artifacts" half is verified
 against the local packed bundle as the stand-in; **actual npm publish + GitHub Release await a remote**
 (the only steps M4 can't complete locally).
@@ -37,12 +37,12 @@ a remote exists (documented deviation).
    library skill into `.claude/skills/` and `.agents/skills/`; where symlinks fail (Windows, restricted
    FS) it copies. A copy silently diverges from the library after a heal promotion (TODOS finding), so
    every install is recorded in an install manifest with its `mode` (`link`|`copy`); `list` flags
-   copy-mode installs as stale-able and `bskill sync` refreshes them. Copy is NOT treated as equivalent
+   copy-mode installs as stale-able and `skillwright sync` refreshes them. Copy is NOT treated as equivalent
    to symlink.
 2. **Install targets both agent ecosystems.** `.claude/skills/` (Claude Code) and `.agents/skills/`
    (the cross-agent standard Codex et al. read) — that dual write is what makes criterion 4 reachable.
 3. **The published CLI runs compiled JS, not tsx.** `bin` points at `dist/bin.js` (built with a
-   shebang); `files` ships `dist` only; `npx bskill` works with zero dev deps. Local dev keeps using
+   shebang); `files` ships `dist` only; `npx skillwright` works with zero dev deps. Local dev keeps using
    the `src` entry.
 4. **Publish is tag-driven and provenance-signed, but never automatic.** The release workflow runs on
    a version tag; it is not wired to run on push. No secret or publish happens without the maintainer
@@ -50,7 +50,7 @@ a remote exists (documented deviation).
 
 ---
 
-## Phase 0 — `bskill install` / `list` / `sync` (local, fully testable)
+## Phase 0 — `skillwright install` / `list` / `sync` (local, fully testable)
 
 **Deliverables**
 - `installSkill(slug, { scope: "project"|"user", projectDir?, linkMode? })` — resolves the target
@@ -60,7 +60,7 @@ a remote exists (documented deviation).
 - `listSkills()` — library contents + per-skill install locations and mode; copy-mode installs flagged
   stale-able.
 - `syncInstalls()` — refresh copy-mode installs from the library.
-- CLI: `bskill install [<slug>|--all] [--project <dir>|--user]`, `bskill list`, `bskill sync`.
+- CLI: `skillwright install [<slug>|--all] [--project <dir>|--user]`, `skillwright list`, `skillwright sync`.
 
 **Gate:** install a distilled skill into a temp project → both target dirs resolve to the library
 skill; symlink preferred, copy-fallback exercised; re-install idempotent; `list` shows library +
@@ -71,13 +71,13 @@ locations + mode; `sync` refreshes a copied install after a library change.
 ## Phase 1 — npm packaging (publishable CLI, verified via tarball)
 
 **Deliverables**
-- CLI `package.json`: `bin: { bskill: "./dist/bin.js" }`, `files: ["dist"]`, `exports`, a build that
+- CLI `package.json`: `bin: { skillwright: "./dist/bin.js" }`, `files: ["dist"]`, `exports`, a build that
   emits `dist/bin.js` with a `#!/usr/bin/env node` shebang, `prepublishOnly` build hook, correct
   workspace-dep handling for publish (shared bundled or published).
 - Ensure the built CLI runs standalone (no tsx, no workspace symlinks) from an installed tarball.
 
 **Gate:** `pnpm pack` (or `npm pack`) produces a tarball; installing it into a temp dir exposes a
-working `bskill` — `bskill --help`, `bskill distill <fixture>`, `bskill list` all run on compiled JS
+working `skillwright` — `skillwright --help`, `skillwright distill <fixture>`, `skillwright list` all run on compiled JS
 with no dev dependencies present.
 
 ---
@@ -101,7 +101,7 @@ step and it waits for explicit go.
 
 **Deliverables**
 - Install a distilled skill into a temp project's `.agents/skills/`; drive **Codex CLI** to discover
-  it and execute it in script mode (`bskill run <skill>` / the `scripts/replay.ts` entrypoint resolves
+  it and execute it in script mode (`skillwright run <skill>` / the `scripts/replay.ts` entrypoint resolves
   and dispatches).
 - Document the fresh-machine install path (from the P1 tarball as the artifact; from the npm package
   once published).

@@ -13,16 +13,16 @@ import { installSkill, listSkills, syncInstalls } from "../src/install";
 
 /** A library dir containing one skill, plus an isolated project dir. */
 function setup(slug = "delete-invoice"): { lib: string; project: string } {
-  const lib = mkdtempSync(join(tmpdir(), "bskill-lib-"));
+  const lib = mkdtempSync(join(tmpdir(), "skillwright-lib-"));
   const skill = join(lib, slug);
   mkdirSync(join(skill, "references"), { recursive: true });
   writeFileSync(join(skill, "SKILL.md"), "---\nname: " + slug + "\ndescription: d\n---\n# " + slug + "\n");
   writeFileSync(join(skill, "references", "walkthrough.md"), "walk v1\n");
-  const project = mkdtempSync(join(tmpdir(), "bskill-proj-"));
+  const project = mkdtempSync(join(tmpdir(), "skillwright-proj-"));
   return { lib, project };
 }
 
-describe("bskill install (§6.4)", () => {
+describe("skillwright install (§6.4)", () => {
   test("installs into both .claude/skills and .agents/skills, resolving to the library skill", () => {
     const { lib, project } = setup();
     const result = installSkill("delete-invoice", { scope: "project", projectDir: project, libraryDir: lib });
@@ -65,7 +65,7 @@ describe("bskill install (§6.4)", () => {
   });
 });
 
-describe("bskill list", () => {
+describe("skillwright list", () => {
   test("shows the library skill with its install locations and flags copy-mode as stale-able", () => {
     const { lib, project } = setup();
     installSkill("delete-invoice", {
@@ -81,7 +81,7 @@ describe("bskill list", () => {
   });
 });
 
-describe("bskill sync", () => {
+describe("skillwright sync", () => {
   test("refreshes a copy-mode install after the library changes; symlinks need no sync", () => {
     const { lib, project } = setup();
     installSkill("delete-invoice", {

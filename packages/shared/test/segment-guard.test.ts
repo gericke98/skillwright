@@ -2,11 +2,11 @@ import { describe, expect, test } from "vitest";
 import { assertSingleSegment, MultiSegmentError } from "../src/index";
 import type { Recording } from "../src/index";
 
-function baseRecording(overrides: Partial<Recording["x-bskill"]["segment"]> = {}): Recording {
+function baseRecording(overrides: Partial<Recording["x-skillwright"]["segment"]> = {}): Recording {
   return {
     title: "approve-invoice",
     steps: [{ type: "click", selectors: [["aria/Approve"]] }],
-    "x-bskill": {
+    "x-skillwright": {
       version: 1,
       segment: {
         id: "seg-1",
@@ -30,13 +30,13 @@ describe("assertSingleSegment", () => {
 
   test("throws loudly, never silently drops, on an unrecognized multi-segment array", () => {
     const future = baseRecording();
-    // A newer bskill may emit an explicit segments[] list; v1 must refuse it.
-    (future["x-bskill"] as unknown as { segments: unknown[] }).segments = [{}, {}];
+    // A newer skillwright may emit an explicit segments[] list; v1 must refuse it.
+    (future["x-skillwright"] as unknown as { segments: unknown[] }).segments = [{}, {}];
     expect(() => assertSingleSegment(future)).toThrow(MultiSegmentError);
   });
 
-  test("the error message names the cause so the user knows it was recorded with a newer bskill", () => {
+  test("the error message names the cause so the user knows it was recorded with a newer skillwright", () => {
     const rescueSegment = baseRecording({ parentSkill: "approve-invoice" });
-    expect(() => assertSingleSegment(rescueSegment)).toThrow(/newer bskill/i);
+    expect(() => assertSingleSegment(rescueSegment)).toThrow(/newer skillwright/i);
   });
 });

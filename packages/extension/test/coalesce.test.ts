@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Step } from "@bskill/shared";
+import type { Step } from "@skillwright/shared";
 import { coalesceSteps } from "../src/index";
 
 const click = (sel: string): Step => ({ type: "click", effect: "mutating", selectors: [[sel]] });

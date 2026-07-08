@@ -1,4 +1,4 @@
-import type { Step } from "@bskill/shared";
+import type { Step } from "@skillwright/shared";
 
 const VALUE_ACTIONS = new Set(["change", "input", "select"]);
 

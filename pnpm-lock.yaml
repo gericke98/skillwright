@@ -30,7 +30,7 @@ importers:
         specifier: ^8.21.0
         version: 8.21.0
     devDependencies:
-      '@bskill/shared':
+      '@skillwright/shared':
         specifier: workspace:*
         version: link:../shared
       '@types/node':
@@ -45,10 +45,10 @@ importers:
 
   packages/evals:
     dependencies:
-      '@bskill/shared':
+      '@skillwright/shared':
         specifier: workspace:*
         version: link:../shared
-      bskill:
+      skillwright:
         specifier: workspace:*
         version: link:../cli
     devDependencies:
@@ -58,7 +58,7 @@ importers:
 
   packages/extension:
     dependencies:
-      '@bskill/shared':
+      '@skillwright/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -80,24 +80,24 @@ importers:
 
   packages/integration:
     devDependencies:
-      '@bskill/extension':
+      '@skillwright/extension':
         specifier: workspace:*
         version: link:../extension
-      '@bskill/fixture-app':
+      '@skillwright/fixture-app':
         specifier: workspace:*
         version: link:../fixture-app
-      '@bskill/shared':
+      '@skillwright/shared':
         specifier: workspace:*
         version: link:../shared
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      bskill:
-        specifier: workspace:*
-        version: link:../cli
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
+      skillwright:
+        specifier: workspace:*
+        version: link:../cli
       ws:
         specifier: ^8.21.0
         version: 8.21.0

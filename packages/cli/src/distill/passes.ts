@@ -1,4 +1,4 @@
-import { EFFECT_SEVERITY, type EffectTag, type Recording } from "@bskill/shared";
+import { EFFECT_SEVERITY, type EffectTag, type Recording } from "@skillwright/shared";
 import type { LlmBackend, SchemaSpec } from "../llm/backend";
 import { summarizeSteps, type StepSummary } from "./sanitize";
 
@@ -28,7 +28,7 @@ export interface StepNarrative {
  * backend, not decoration.
  */
 const PREAMBLE =
-  "You are a component of bskill, a developer tool that turns a browser-task recording the user " +
+  "You are a component of skillwright, a developer tool that turns a browser-task recording the user " +
   "made on their own machine into a reusable, shareable automation skill. All values below are " +
   "already secret-redacted. Do the requested transformation and return ONLY the requested JSON.";
 

@@ -36,7 +36,7 @@ jobs:
       # on-demand / on prompt-change only (see packages/evals, §13).
 
       - name: Build publishable CLI bundle
-        run: pnpm --filter bskill bundle
+        run: pnpm --filter skillwright bundle
 
       - name: Build extension
-        run: pnpm --filter @bskill/extension build:crx
+        run: pnpm --filter @skillwright/extension build:crx

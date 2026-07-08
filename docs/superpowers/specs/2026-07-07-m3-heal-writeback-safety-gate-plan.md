@@ -12,9 +12,9 @@ a destructive-tagged step is never re-executed without confirmation (safety-gate
 **Method:** test-first (TDD), phase-gated. Each phase has a falsifiable gate.
 
 **Status:** P0 ✅ · P1 ✅ (tier-3 heal + partial-fire guard + LLM healer) · P2 ✅ (quarantine →
-promote-after-proof + `bskill promote`) · P3 ✅ **— M3 GATE CLOSED.** Tier-3 heal recovers a
+promote-after-proof + `skillwright promote`) · P3 ✅ **— M3 GATE CLOSED.** Tier-3 heal recovers a
 fully-broken destructive selector against real Chromium (with confirmation → row deleted; without →
-blocked, row survives); heal wired into `bskill run` (cdp + relay) with the promoted-selector overlay
+blocked, row survives); heal wired into `skillwright run` (cdp + relay) with the promoted-selector overlay
 and clean-run confirmation. 203 tests green. Note: heal fires only for drivers that can `snapshot()`
 (Playwright/cdp); relay heal awaits an extension snapshot channel (M4+).
 
@@ -28,9 +28,9 @@ and clean-run confirmation. 203 tests green. Note: heal fires only for drivers t
    follow-up assertion failed is `partiallyExecuted: true` → `mutating`/`destructive` **halt** (the
    double-send guard). M3 adds no new safety branches; it routes failures through the existing gate.
 2. **Heal never edits canonical files. Quarantine-before-promote.** A successful heal writes a
-   candidate selector patch to `~/.browser-skills/<slug>/.quarantine/`, used for the rest of THAT run
+   candidate selector patch to `~/.skillwright/<slug>/.quarantine/`, used for the rest of THAT run
    only. It becomes canonical (patch `scripts/replay.ts`, bump `metadata.version`, append
-   `references/CHANGELOG.md`) only after **N=2 clean confirmations** or explicit `bskill promote`.
+   `references/CHANGELOG.md`) only after **N=2 clean confirmations** or explicit `skillwright promote`.
    `assets/recording.json` is immutable evidence — never modified, ever. This closes the poisoning
    path: a right-looking-but-wrong one-off heal shared across every project can't become permanent
    truth on first success.
@@ -88,10 +88,10 @@ selector) and the run completes; a `destructive` full-stack-break halts without 
   `.quarantine/`, used for the remainder of the run, NOT applied to canonical `scripts/replay.ts`.
 - Confirmation tracking: each clean re-run that uses the candidate without re-healing increments its
   confirmation count.
-- Promotion: at **N=2** confirmations or `bskill promote <skill>`, the candidate patches
+- Promotion: at **N=2** confirmations or `skillwright promote <skill>`, the candidate patches
   `scripts/replay.ts`, bumps `metadata.version`, and appends the candidate→promoted transition to
   `references/CHANGELOG.md`. `assets/recording.json` is never touched.
-- `bskill promote <skill>` command; `bskill run` failure report already carries what an agent needs.
+- `skillwright promote <skill>` command; `skillwright run` failure report already carries what an agent needs.
 
 **Gate:** a heal persists a quarantined candidate (canonical files unchanged on first success);
 promotion bumps the version + writes the changelog and leaves `recording.json` byte-identical; a
@@ -99,7 +99,7 @@ first-success heal does NOT auto-promote.
 
 ---
 
-## Phase 3 — Wire into `bskill run` + real-driver acceptance
+## Phase 3 — Wire into `skillwright run` + real-driver acceptance
 
 **Deliverables**
 - Heal wired into both `runSkillByName` (cdp) and `runSkillViaRelay` (relay) paths, backend via the
@@ -113,7 +113,7 @@ step is never re-executed without confirmation (safety-gate suite green); full s
 ---
 
 ## Out of scope for M3 (→ M4)
-- `bskill install`, npm publish, extension delivery, release CI, hardened two-party auth.
+- `skillwright install`, npm publish, extension delivery, release CI, hardened two-party auth.
 
 ## Sequencing
 ```

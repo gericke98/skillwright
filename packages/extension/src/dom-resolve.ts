@@ -1,5 +1,5 @@
 /**
- * Resolve a bskill selector to an element within a document. Self-contained (no
+ * Resolve a skillwright selector to an element within a document. Self-contained (no
  * imports, no outer-scope refs) so its `.toString()` can be injected into the
  * page via chrome.debugger `Runtime.evaluate` during relay replay — the same
  * logic then runs both in unit tests (happy-dom) and in the live page.

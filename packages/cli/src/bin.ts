@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { MultiSegmentError, type Recording } from "@bskill/shared";
+import { MultiSegmentError, type Recording } from "@skillwright/shared";
 import { distill } from "./distill";
 import { writeSkillDirectory } from "./write-skill";
 import { defaultLibraryDir } from "./paths";
@@ -9,13 +9,13 @@ import { promote } from "./quarantine";
 import { installSkill, listSkills, syncInstalls, type InstallScope } from "./install";
 
 function fail(msg: string): never {
-  process.stderr.write(`bskill: ${msg}\n`);
+  process.stderr.write(`skillwright: ${msg}\n`);
   process.exit(1);
 }
 
 async function cmdDistill(argv: string[]): Promise<void> {
   const file = argv.find((a) => !a.startsWith("--"));
-  if (!file) fail("usage: bskill distill <recording.json> [--name <slug>] [--semantic]");
+  if (!file) fail("usage: skillwright distill <recording.json> [--name <slug>] [--semantic]");
   const nameFlag = argv.indexOf("--name");
   const name = nameFlag >= 0 ? argv[nameFlag + 1] : undefined;
   const semantic = argv.includes("--semantic");
@@ -57,7 +57,7 @@ function reportResult(slug: string, result: Awaited<ReturnType<typeof import("./
       );
       break;
     case "failed":
-      process.stderr.write(`bskill: replay failed\n${JSON.stringify(result.report, null, 2)}\n`);
+      process.stderr.write(`skillwright: replay failed\n${JSON.stringify(result.report, null, 2)}\n`);
       process.exit(2);
   }
 }
@@ -65,7 +65,7 @@ function reportResult(slug: string, result: Awaited<ReturnType<typeof import("./
 async function cmdRun(argv: string[]): Promise<void> {
   const slug = argv.find((a) => !a.startsWith("--"));
   if (!slug) {
-    fail("usage: bskill run <skill> [--relay [--port N] | --cdp <url>] [--confirm-destructive]");
+    fail("usage: skillwright run <skill> [--relay [--port N] | --cdp <url>] [--confirm-destructive]");
   }
   const confirmDestructive = argv.includes("--confirm-destructive");
 
@@ -79,7 +79,7 @@ async function cmdRun(argv: string[]): Promise<void> {
       onReady: ({ url, token }) => {
         process.stdout.write(
           `Relay listening on ${url}\n` +
-            `In the bskill side panel: set port + token, then click Connect.\n` +
+            `In the skillwright side panel: set port + token, then click Connect.\n` +
             `  token: ${token}\n` +
             `Waiting for the extension to pair...\n`,
         );
@@ -100,7 +100,7 @@ async function cmdRun(argv: string[]): Promise<void> {
 
 function cmdPromote(argv: string[]): void {
   const slug = argv.find((a) => !a.startsWith("--"));
-  if (!slug) fail("usage: bskill promote <skill> [--force]");
+  if (!slug) fail("usage: skillwright promote <skill> [--force]");
   const force = argv.includes("--force");
   const dir = join(defaultLibraryDir(), slug!);
   const result = promote(dir, { force });
@@ -116,7 +116,7 @@ function cmdPromote(argv: string[]): void {
 function cmdInstall(argv: string[]): void {
   const all = argv.includes("--all");
   const slug = argv.find((a) => !a.startsWith("--"));
-  if (!all && !slug) fail("usage: bskill install [<skill>|--all] [--project <dir>|--user]");
+  if (!all && !slug) fail("usage: skillwright install [<skill>|--all] [--project <dir>|--user]");
 
   const projectFlag = argv.indexOf("--project");
   const scope: InstallScope = argv.includes("--user") ? "user" : "project";
@@ -134,13 +134,13 @@ function cmdInstall(argv: string[]): void {
 function cmdList(): void {
   const listing = listSkills();
   if (listing.length === 0) {
-    process.stdout.write("No skills in the library. Distill one with `bskill distill`.\n");
+    process.stdout.write("No skills in the library. Distill one with `skillwright distill`.\n");
     return;
   }
   for (const skill of listing) {
     process.stdout.write(`${skill.slug}\n`);
     for (const i of skill.installs) {
-      process.stdout.write(`  ${i.mode === "link" ? "linked" : "copied"} → ${i.path}${i.staleable ? " (stale-able; run `bskill sync`)" : ""}\n`);
+      process.stdout.write(`  ${i.mode === "link" ? "linked" : "copied"} → ${i.path}${i.staleable ? " (stale-able; run `skillwright sync`)" : ""}\n`);
     }
   }
 }

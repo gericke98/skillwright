@@ -1,6 +1,6 @@
 /**
- * bskill recording schema — an @puppeteer/replay UserFlow extended with an
- * `x-bskill` namespace. Extra keys are ignored by standard Recorder/Puppeteer
+ * skillwright recording schema — an @puppeteer/replay UserFlow extended with an
+ * `x-skillwright` namespace. Extra keys are ignored by standard Recorder/Puppeteer
  * tooling, so the file stays interop-clean.
  */
 
@@ -46,5 +46,5 @@ export interface BskillNamespace {
 export interface Recording {
   title: string;
   steps: Step[];
-  "x-bskill": BskillNamespace;
+  "x-skillwright": BskillNamespace;
 }

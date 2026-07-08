@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import type { Recording } from "@bskill/shared";
+import type { Recording } from "@skillwright/shared";
 import { defaultLibraryDir } from "./paths";
 import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, type ReplayResult } from "./replay";

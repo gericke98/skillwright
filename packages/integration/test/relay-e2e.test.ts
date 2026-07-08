@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { WebSocket } from "ws";
 import { chromium, type Browser, type Page } from "playwright";
-import { startFixtureServer, type FixtureServer } from "@bskill/fixture-app";
+import { startFixtureServer, type FixtureServer } from "@skillwright/fixture-app";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,8 +14,8 @@ import {
   writeSkillDirectory,
   translateSelector,
   type ReplayStep,
-} from "bskill";
-import type { Recording } from "@bskill/shared";
+} from "skillwright";
+import type { Recording } from "@skillwright/shared";
 
 /**
  * End-to-end relay path (design B): RelayStepDriver → WsRelayServer (real
@@ -137,9 +137,9 @@ describe("relay e2e: driver → WS server → fake extension → real DOM", () =
         { type: "change", effect: "mutating", selectors: [["aria/Search invoices"]], value: "INV-001" },
         { type: "click", effect: "destructive", selectors: [["aria/Delete invoice INV-001"], ['[data-testid="delete-invoice"]']] },
       ],
-      "x-bskill": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" } },
+      "x-skillwright": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" } },
     };
-    const home = mkdtempSync(join(tmpdir(), "bskill-relay-"));
+    const home = mkdtempSync(join(tmpdir(), "skillwright-relay-"));
     const skill = distill(recording, {});
     writeSkillDirectory(skill, home);
 

@@ -8,9 +8,9 @@ import type { Recording } from "./schema";
 export class MultiSegmentError extends Error {
   constructor(cause: string) {
     super(
-      `This recording was made with a newer bskill (${cause}). ` +
+      `This recording was made with a newer skillwright (${cause}). ` +
         `This version supports single-segment recordings only and will not ` +
-        `silently drop segments. Upgrade bskill or re-record the task.`,
+        `silently drop segments. Upgrade skillwright or re-record the task.`,
     );
     this.name = "MultiSegmentError";
   }
@@ -22,11 +22,11 @@ export class MultiSegmentError extends Error {
  * drops segments silently.
  */
 export function assertSingleSegment(recording: Recording): void {
-  const ns = recording["x-bskill"] as { segments?: unknown };
+  const ns = recording["x-skillwright"] as { segments?: unknown };
   if (Array.isArray(ns.segments)) {
     throw new MultiSegmentError("it carries an explicit segments[] list");
   }
-  if (recording["x-bskill"].segment.parentSkill !== null) {
+  if (recording["x-skillwright"].segment.parentSkill !== null) {
     throw new MultiSegmentError("it attaches to an existing skill as a later segment");
   }
 }

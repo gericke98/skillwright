@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { translateSelector } from "../src/index";
 
-describe("translateSelector — bskill selector string → Playwright locator descriptor", () => {
+describe("translateSelector — skillwright selector string → Playwright locator descriptor", () => {
   test("aria/<name> becomes a label locator", () => {
     expect(translateSelector("aria/Delete invoice INV-001")).toEqual({
       kind: "label",

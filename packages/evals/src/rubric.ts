@@ -1,4 +1,4 @@
-import type { SkillDirectory } from "bskill";
+import type { SkillDirectory } from "skillwright";
 
 /** A demo-typed value that the distiller should promote to a typed input. */
 export interface ExpectedParam {

@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { MultiSegmentError, type Recording } from "@bskill/shared";
+import { MultiSegmentError, type Recording } from "@skillwright/shared";
 import { distill } from "../src/index";
 
 function recording(steps: Recording["steps"], parentSkill: string | null = null): Recording {
   return {
     title: "Approve invoice",
     steps,
-    "x-bskill": {
+    "x-skillwright": {
       version: 1,
       segment: { id: "seg-1", parentSkill, recordedAt: "2026-07-06T00:00:00.000Z" },
     },

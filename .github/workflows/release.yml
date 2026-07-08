@@ -34,28 +34,28 @@ jobs:
       - run: pnpm test
 
       # Publish the CLI to npm with provenance. `prepack` builds the bundle.
-      - name: Publish bskill to npm
-        run: pnpm --filter bskill publish --provenance --no-git-checks --access public
+      - name: Publish skillwright to npm
+        run: pnpm --filter skillwright publish --provenance --no-git-checks --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # Build + zip the unpacked extension for the GitHub Release.
       - name: Build extension
-        run: pnpm --filter @bskill/extension build:crx
+        run: pnpm --filter @skillwright/extension build:crx
 
       - name: Zip extension
         run: |
           cd packages/extension/dist-extension
-          zip -r "$GITHUB_WORKSPACE/bskill-extension.zip" .
+          zip -r "$GITHUB_WORKSPACE/skillwright-extension.zip" .
 
       - name: Attach extension to the Release
         uses: softprops/action-gh-release@v2
         with:
-          files: bskill-extension.zip
+          files: skillwright-extension.zip
           body: |
-            bskill ${{ github.ref_name }}
+            skillwright ${{ github.ref_name }}
 
-            - CLI: `npm i -g bskill` (published to npm with provenance).
-            - Extension: download `bskill-extension.zip`, unzip, and load unpacked
+            - CLI: `npm i -g skillwright` (published to npm with provenance).
+            - Extension: download `skillwright-extension.zip`, unzip, and load unpacked
               via chrome://extensions (Developer mode). See the README for the
               known unpacked-extension limitation on managed profiles.

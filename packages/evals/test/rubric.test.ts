@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { SkillDirectory } from "bskill";
+import type { SkillDirectory } from "skillwright";
 import { scoreFixture, type Expectations } from "../src/rubric";
 
 /**
@@ -12,7 +12,7 @@ function recordingJson(steps: Array<{ type: string; effect: string }>): string {
   return JSON.stringify({
     title: "Demo",
     steps: steps.map((s) => ({ ...s, selectors: [] })),
-    "x-bskill": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026" } },
+    "x-skillwright": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026" } },
   });
 }
 
@@ -121,7 +121,7 @@ describe("scoreFixture — parameter extraction (soft score)", () => {
   test("recall counts demo values promoted to declared placeholders", () => {
     const produced = skill({
       "SKILL.md":
-        "---\nname: demo\ndescription: A demo.\nmetadata:\n  bskill-inputs: '[{\"name\":\"invoice_number\"}]'\n---\n# Demo\nEnter {invoice_number}.\n",
+        "---\nname: demo\ndescription: A demo.\nmetadata:\n  skillwright-inputs: '[{\"name\":\"invoice_number\"}]'\n---\n# Demo\nEnter {invoice_number}.\n",
     });
     const score = scoreFixture(produced, {
       ...baseExpectations,

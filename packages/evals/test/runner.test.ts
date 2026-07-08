@@ -1,13 +1,13 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@bskill/shared";
-import type { SkillDirectory } from "bskill";
+import type { Recording } from "@skillwright/shared";
+import type { SkillDirectory } from "skillwright";
 import { runEvals, type FixtureCase } from "../src/runner";
 
 function recording(steps: Recording["steps"]): Recording {
   return {
     title: "Demo",
     steps,
-    "x-bskill": {
+    "x-skillwright": {
       version: 1,
       segment: { id: "seg-1", parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" },
     },

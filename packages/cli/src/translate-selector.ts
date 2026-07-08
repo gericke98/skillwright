@@ -9,7 +9,7 @@ export interface LocatorDescriptor {
 }
 
 /**
- * Translate one bskill selector string into a locator descriptor. Mirrors the
+ * Translate one skillwright selector string into a locator descriptor. Mirrors the
  * capture side: `aria/<name>` came from an aria-label, `text/<text>` from
  * visible text; everything else (test attributes, ids, CSS paths) is raw CSS.
  */

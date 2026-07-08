@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { assertSingleSegment, type Step } from "@bskill/shared";
+import { assertSingleSegment, type Step } from "@skillwright/shared";
 import { RecordingSession } from "../src/index";
 
 function fixedDeps() {
@@ -16,7 +16,7 @@ describe("RecordingSession", () => {
     const rec = s.stop();
     expect(rec.title).toBe("Delete invoice");
     expect(rec.steps).toEqual([clickStep]);
-    expect(rec["x-bskill"].segment).toEqual({
+    expect(rec["x-skillwright"].segment).toEqual({
       id: "seg-fixed",
       parentSkill: null,
       recordedAt: "2026-07-07T00:00:00.000Z",

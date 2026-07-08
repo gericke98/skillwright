@@ -123,7 +123,7 @@ export interface SkillListing {
 }
 
 /** List library skills with their install locations; copy-mode installs are
- * flagged stale-able (they don't track library promotions — run `bskill sync`). */
+ * flagged stale-able (they don't track library promotions — run `skillwright sync`). */
 export function listSkills(libraryDir = defaultLibraryDir()): SkillListing[] {
   if (!existsSync(libraryDir)) return [];
   const manifest = loadManifest(libraryDir);

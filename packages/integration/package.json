@@ -1,7 +1,7 @@
 {
-  "name": "@bskill/integration",
+  "name": "@skillwright/integration",
   "version": "0.0.0",
-  "description": "Cross-package integration tests for the bskill pipeline",
+  "description": "Cross-package integration tests for the skillwright pipeline",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -9,10 +9,10 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "bskill": "workspace:*",
-    "@bskill/extension": "workspace:*",
-    "@bskill/fixture-app": "workspace:*",
-    "@bskill/shared": "workspace:*",
+    "skillwright": "workspace:*",
+    "@skillwright/extension": "workspace:*",
+    "@skillwright/fixture-app": "workspace:*",
+    "@skillwright/shared": "workspace:*",
     "@types/ws": "^8.18.1",
     "playwright": "^1.61.1",
     "ws": "^8.21.0"
