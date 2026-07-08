@@ -10,7 +10,8 @@ with the hardened agent-cli adapter; golden-fixture evals built alongside the pr
 **Method:** test-first (TDD), phase-gated. Each phase has a falsifiable gate; do not advance until green.
 
 **Status:** P0 ✅ done (eval rig fails on zero-LLM baseline as designed) · P1 ✅ done (backend +
-adapters; live-CLI smoke folded into P3) · P2 ⏳ next · P3 ⏳.
+adapters; live-CLI smoke folded into P3) · P2 ✅ done (semantic distiller; golden fixtures pass on
+MockBackend; `skills-ref` binary unavailable → structural frontmatter conformance stands in) · P3 ⏳ next.
 
 ---
 

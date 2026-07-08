@@ -1,5 +1,16 @@
 export { distill } from "./distill";
 export type { SkillDirectory, DistillOptions } from "./distill";
+export { distillSemantic } from "./distill/semantic";
+export {
+  inferIntent,
+  inferParams,
+  inferEffects,
+  narrate,
+  type Intent,
+  type ParamDef,
+  type StepNarrative,
+} from "./distill/passes";
+export { summarizeSteps, scrubText, type StepSummary } from "./distill/sanitize";
 export { writeSkillDirectory } from "./write-skill";
 export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
