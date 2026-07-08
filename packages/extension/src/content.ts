@@ -4,7 +4,7 @@
  * forwards steps to the background worker. Honors R2: captures nothing until the
  * background says a recording is active.
  */
-import { buildCaptureStep } from "./capture";
+import { buildCaptureStep, eventTarget } from "./capture";
 import type { CaptureMessage, RecStateMessage, RecStateReply } from "./messages";
 
 let recording = false;
@@ -33,8 +33,10 @@ function send(msg: CaptureMessage): void {
 function onEvent(action: string) {
   return (event: Event) => {
     if (!recording) return;
-    const target = event.target;
-    if (!(target instanceof Element)) return;
+    // composedPath()[0] is the real element inside a shadow root (event.target
+    // would be the retargeted host).
+    const target = eventTarget(event);
+    if (!target) return;
     try {
       send({ kind: "step", step: buildCaptureStep(target, action) });
     } catch {

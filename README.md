@@ -186,15 +186,14 @@ to 1.0:
 - [x] Tier-3 heal over the relay transport (extension ARIA snapshot channel)
 - [x] Real-world hardening — dogfooding public sites fixed 4 bugs (selector
       priority, a nested-URL secret leak, form-field anchors, selector uniqueness)
-- [x] **Shadow DOM replay** — both replay paths pierce open shadow roots
-      (Playwright natively; the relay's resolver now recurses shadow roots)
-- [ ] **Shadow DOM capture** — capturing *through* a shadow boundary still hits
-      event retargeting (the listener sees the host); replay works once a
-      shadow-piercing selector exists
-- [x] **Same-origin iframe replay (both paths)** — the relay resolver pierces
-      iframe documents and the Playwright driver searches child frames (verified
-      e2e). Cross-origin frames are a hard browser boundary; capturing *through* a
-      frame boundary is still open.
+- [x] **Shadow DOM** — capture pierces the boundary via `composedPath()` (the
+      real inner element, not the retargeted host); both replay paths pierce open
+      shadow roots (Playwright natively, the relay resolver recurses shadow roots).
+- [x] **Iframes** — capture runs in every frame (`all_frames`); replay works
+      across frames on the Playwright/cdp path (incl. cross-origin — Playwright
+      isn't bound by same-origin policy) and same-origin on the relay path.
+- [ ] **Cross-origin iframe replay over the *relay*** — an in-page resolver can't
+      reach cross-origin frames (a browser security boundary); use the cdp path.
 - [ ] Copy-mode install divergence handling on Windows / restricted filesystems
 - [ ] Broaden the eval fixture corpus toward real-world sites
 

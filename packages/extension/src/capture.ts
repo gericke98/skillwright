@@ -5,6 +5,17 @@ import { redactValue } from "./redact";
 /** Actions that carry a field value worth recording (post-redaction). */
 const VALUE_ACTIONS = new Set(["change", "input", "select"]);
 
+/**
+ * The REAL element an event acted on. Inside a shadow DOM, `event.target` is
+ * retargeted to the shadow host; `event.composedPath()[0]` is the actual inner
+ * element the user interacted with. Falls back to `event.target` for plain DOM.
+ */
+export function eventTarget(event: Event): Element | undefined {
+  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+  const first = path.length > 0 ? path[0] : event.target;
+  return first instanceof Element ? first : undefined;
+}
+
 /** The accessible name the effect classifier reasons about. */
 function accessibleName(el: Element): string | undefined {
   const aria = el.getAttribute("aria-label")?.trim();
