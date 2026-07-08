@@ -1,6 +1,8 @@
 import {
   assertSingleSegment,
   classifyStepEffect,
+  deriveNetworkEffect,
+  roundUpEffect,
   type EffectTag,
   type Recording,
   type Step,
@@ -27,7 +29,10 @@ interface TaggedStep {
 function tagSteps(recording: Recording): TaggedStep[] {
   return recording.steps.map((step, index) => {
     const label = stepLabel(step);
-    const effect = step.effect ?? classifyStepEffect({ action: step.type, label });
+    const base = step.effect ?? classifyStepEffect({ action: step.type, label });
+    // Network truth (the HTTP method a step fired) can only RAISE severity.
+    const network = deriveNetworkEffect(step.requests ?? []);
+    const effect = network ? roundUpEffect([base, network]) : base;
     return { index, step, label, effect };
   });
 }
