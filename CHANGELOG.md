@@ -47,6 +47,14 @@ The full v1 pipeline is built and green; not yet published to npm.
   destructive API-replay that fails never falls back to the DOM (double-execute
   guard). Verified e2e against real Chromium.
 
+### Fixed
+
+- **Selector priority (found by dogfooding a real login page).** A stable
+  `text/<label>` selector now ranks ABOVE the brittle deep `nth-of-type` CSS
+  path. Previously a button with visible text but no aria/id got the positional
+  path first, so replay would break on any layout change. Manual dogfood tools
+  live at `packages/integration/dogfood-*.mjs`.
+
 ### Security
 
 - Secret redaction at capture time and again during distillation, enforced by

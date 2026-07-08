@@ -1,9 +1,11 @@
 /**
  * Compute an ordered fallback stack of selectors for a captured element,
- * most-stable-first (§5.2): ARIA role+name → test attributes → id → CSS path →
- * visible text. The replay driver tries each in order; the heal loop reasons
- * over the same list. Stability order matters more than completeness — a
- * durable anchor early means fewer heals.
+ * most-stable-first (§5.2): ARIA role+name → test attributes → id → visible
+ * text → CSS path. Visible text is a stable, human-meaningful anchor that
+ * survives layout changes; a deep positional `nth-of-type` CSS path is the most
+ * brittle and is the last resort. The replay driver tries each in order; the
+ * heal loop reasons over the same list. Stability order matters more than
+ * completeness — a durable anchor early means fewer heals.
  */
 
 const TEST_ATTRS = ["data-testid", "data-test", "data-qa", "data-cy"] as const;
@@ -58,8 +60,10 @@ export function computeSelectorStack(el: Element): string[] {
     if (v) push(`[${attr}="${v}"]`);
   }
   push(idSelector(el));
-  push(cssPath(el));
+  // Visible text ranks ABOVE the positional CSS path: text survives layout
+  // changes, a deep nth-of-type path is the most brittle (last resort).
   push(textSelector(el));
+  push(cssPath(el));
 
   return out;
 }
