@@ -13,8 +13,10 @@
     "@skillwright/extension": "workspace:*",
     "@skillwright/fixture-app": "workspace:*",
     "@skillwright/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/ws": "^8.18.1",
     "playwright": "^1.61.1",
+    "tsx": "^4.23.0",
     "ws": "^8.21.0"
   }
 }

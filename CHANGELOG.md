@@ -40,6 +40,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Validated (no code change)
 
+- **MCP interop with the official client.** The `skillwright mcp` server is now
+  proven against the canonical `@modelcontextprotocol/sdk` client (the same
+  library OpenAI / LangGraph / Cursor use), spawned as a real subprocess: it
+  negotiates `initialize`, lists each installed skill as a tool, and routes a
+  `tools/call` — the real "consumable by any agent" contract, beyond the
+  hand-rolled NDJSON unit test. Verifies actual protocol-version negotiation.
 - **Custom ARIA comboboxes** (`dogfood-combobox.mjs`) — the React-Select /
   MUI-style click-to-open + click-a-dynamically-revealed-option pattern (a
   classic replay failure point, unlike a native `<select>`) replays correctly
