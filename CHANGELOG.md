@@ -6,7 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-The full v1 pipeline is built and green; not yet published to npm.
+## [0.1.0] - 2026-07-08
+
+First tagged release. The full v1 pipeline is built, tested (300+), and CI-green.
+The CLI publishes to npm once an `NPM_TOKEN` is configured; the extension ships as
+an unpacked zip on the GitHub Release.
 
 ### Added
 
@@ -81,4 +85,5 @@ clean fixture hid them). Manual dogfood tools live at
   and a `chrome.debugger` adapter wired into the extension recording path),
   correlating requests to the steps that fired them.
 
-[Unreleased]: https://github.com/gericke98/skillwright/commits/master
+[Unreleased]: https://github.com/gericke98/skillwright/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/gericke98/skillwright/releases/tag/v0.1.0
