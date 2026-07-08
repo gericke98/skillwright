@@ -102,6 +102,21 @@ export function valueLooksSecret(value: string): boolean {
   return false;
 }
 
+/**
+ * Whether a URL COMPONENT (a path segment or a decoded query/fragment value)
+ * carries a secret. Beyond `valueLooksSecret`, this also tokenizes on URL
+ * delimiters so a secret nested inside a URL-encoded URL (analytics beacons
+ * forward the whole page URL, tokens and all, inside one of their params) is
+ * still caught. Confined to URL redaction — form-value redaction is unchanged.
+ */
+function urlComponentHasSecret(value: string): boolean {
+  if (valueLooksSecret(value)) return true;
+  for (const token of value.split(/[\s,;/?&=#]+/)) {
+    if (token && valueLooksSecret(token)) return true;
+  }
+  return false;
+}
+
 export interface FieldMeta {
   /** The input's `type` attribute, e.g. "password", "text", "email". */
   type?: string;
@@ -137,7 +152,7 @@ function redactParamString(params: string): string {
       } catch {
         /* keep raw */
       }
-      const sensitive = SENSITIVE_KEYS.has(key.toLowerCase()) || valueLooksSecret(decoded);
+      const sensitive = SENSITIVE_KEYS.has(key.toLowerCase()) || urlComponentHasSecret(decoded);
       return sensitive ? `${key}=${PLACEHOLDER}` : part;
     })
     .join("&");
@@ -157,7 +172,7 @@ function redactPathSegments(base: string): string {
     } catch {
       /* keep raw */
     }
-    return valueLooksSecret(decoded) ? PLACEHOLDER : seg;
+    return urlComponentHasSecret(decoded) ? PLACEHOLDER : seg;
   });
   return authority + segs.join("/");
 }
