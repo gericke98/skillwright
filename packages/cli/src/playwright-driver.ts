@@ -1,4 +1,4 @@
-import type { Locator, Page } from "playwright";
+import type { Frame, Locator, Page } from "playwright";
 import type { PageSnapshot, ReplayStep, StepDriver, StepOutcome, StepRequest } from "./replay";
 import { translateSelector } from "./translate-selector";
 
@@ -15,16 +15,37 @@ export class PlaywrightStepDriver implements StepDriver {
     private readonly timeoutMs = 3000,
   ) {}
 
-  private locator(selector: string): Locator {
+  private locatorIn(scope: Page | Frame, selector: string): Locator {
     const d = translateSelector(selector);
     switch (d.kind) {
       case "label":
-        return this.page.getByLabel(d.value);
+        return scope.getByLabel(d.value);
       case "text":
-        return this.page.getByText(d.value, { exact: true });
+        return scope.getByText(d.value, { exact: true });
       case "css":
-        return this.page.locator(d.value);
+        return scope.locator(d.value);
     }
+  }
+
+  /** Resolve a locator, searching the main frame first and then child frames
+   * (same-origin iframes) so a step targeting an embedded frame still resolves. */
+  private async locator(selector: string): Promise<Locator> {
+    const main = this.locatorIn(this.page, selector).first();
+    try {
+      if ((await main.count()) > 0) return main;
+    } catch {
+      /* fall through to frames */
+    }
+    for (const frame of this.page.frames()) {
+      if (frame === this.page.mainFrame()) continue;
+      try {
+        const loc = this.locatorIn(frame, selector).first();
+        if ((await loc.count()) > 0) return loc;
+      } catch {
+        /* cross-origin / detached frame — skip */
+      }
+    }
+    return main; // nothing matched — return main so execute fails/times out cleanly
   }
 
   /** The live page view handed to the tier-3 healer: URL + ARIA snapshot. */
@@ -49,8 +70,14 @@ export class PlaywrightStepDriver implements StepDriver {
   }
 
   async execute(step: ReplayStep, selector: string): Promise<StepOutcome> {
-    const loc = this.locator(selector).first();
     try {
+      // Navigation doesn't need an element; everything else resolves a locator
+      // (searching child frames for same-origin iframes).
+      if (step.type === "navigate") {
+        if (step.url) await this.page.goto(step.url, { timeout: this.timeoutMs });
+        return "ok";
+      }
+      const loc = await this.locator(selector);
       switch (step.type) {
         case "change":
         case "input":
@@ -59,9 +86,6 @@ export class PlaywrightStepDriver implements StepDriver {
           return "ok";
         case "click":
           await loc.click({ timeout: this.timeoutMs });
-          return "ok";
-        case "navigate":
-          if (step.url) await this.page.goto(step.url, { timeout: this.timeoutMs });
           return "ok";
         default:
           return "ok";

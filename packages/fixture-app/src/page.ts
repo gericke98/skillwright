@@ -100,6 +100,8 @@ export function renderPage(variant: Variant = "a"): string {
     </table>
 
     <p id="result" role="status" aria-live="polite"></p>
+
+    <iframe src="/frame" title="Embedded panel" style="width:100%;height:80px;border:1px solid var(--line);border-radius:10px;margin-top:16px"></iframe>
   </main>
 
   <script>

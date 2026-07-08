@@ -32,6 +32,15 @@ export function startFixtureServer(port = 0): Promise<FixtureServer> {
       res.end(JSON.stringify({ ok: true }));
       return;
     }
+    // A same-origin iframe document (embedded by the main page) — for iframe
+    // capture/replay coverage.
+    if (url.pathname === "/frame") {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(
+        `<!doctype html><meta charset="utf-8"><body><button type="button" aria-label="Frame action" data-testid="frame-btn">Do it</button><p id="frame-result"></p><script>document.querySelector('button').addEventListener('click',function(){document.getElementById('frame-result').textContent='frame clicked';});</script></body>`,
+      );
+      return;
+    }
     const variant: Variant = url.searchParams.get("variant") === "b" ? "b" : "a";
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(renderPage(variant));
