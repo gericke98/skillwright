@@ -88,6 +88,7 @@ export function renderPage(variant: Variant = "a"): string {
         <option value="pending">Pending</option>
         <option value="paid">Paid</option>
       </select>
+      <label><input type="checkbox" aria-label="Only overdue" ${testAttr}="only-overdue" value="on" /> Only overdue</label>
     </div>
 
     <table>

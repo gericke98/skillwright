@@ -74,9 +74,16 @@ export function buildCaptureStep(
   };
 
   if (VALUE_ACTIONS.has(action) && "value" in el) {
-    const raw = String((el as HTMLInputElement).value ?? "");
     const type = el.getAttribute("type") ?? undefined;
-    step.value = redactValue(raw, { type });
+    // A checkbox/radio's `value` attr ("on") is meaningless for replay — the
+    // interaction is about the resulting checked state. Record that boolean so
+    // replay can setChecked() it (fill()-ing a checkbox throws).
+    if (type === "checkbox" || type === "radio") {
+      step.value = String((el as HTMLInputElement).checked);
+    } else {
+      const raw = String((el as HTMLInputElement).value ?? "");
+      step.value = redactValue(raw, { type });
+    }
   }
 
   if (action === "keydown" && key) step.key = key;

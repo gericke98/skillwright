@@ -49,13 +49,19 @@ function focusExpression(selector: string): string {
 }
 
 /** Expression that fills `selector` with `value`; returns true on success. */
-function fillExpression(selector: string, value: string): string {
+export function fillExpression(selector: string, value: string): string {
   return `(() => {
     const resolveElement = ${resolveElement.toString()};
     const el = resolveElement(${JSON.stringify(selector)}, document);
     if (!el) return false;
     el.focus();
-    if ("value" in el) el.value = ${JSON.stringify(value)};
+    // A checkbox/radio carries its meaning in .checked, not .value — capture
+    // records the boolean state ("true"/"false"), so drive .checked here.
+    if (el.type === "checkbox" || el.type === "radio") {
+      el.checked = ${JSON.stringify(value)} === "true";
+    } else if ("value" in el) {
+      el.value = ${JSON.stringify(value)};
+    }
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
     return true;

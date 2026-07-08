@@ -83,9 +83,15 @@ export class PlaywrightStepDriver implements StepDriver {
         case "input":
         case "select": {
           const value = step.value ?? "";
-          // A <select> can't be filled — it must be selected by option value.
-          const tag = await loc.evaluate((el) => el.tagName).catch(() => "");
+          // A <select> can't be filled — it must be selected by option value; a
+          // checkbox/radio can't be filled either — fill() throws, so drive its
+          // checked state instead (idempotent with any paired click step).
+          const { tag, type } = await loc
+            .evaluate((el) => ({ tag: el.tagName, type: (el as HTMLInputElement).type }))
+            .catch(() => ({ tag: "", type: "" }));
           if (tag === "SELECT") await loc.selectOption(value, { timeout: this.timeoutMs });
+          else if (type === "checkbox" || type === "radio")
+            await loc.setChecked(value === "true", { timeout: this.timeoutMs });
           else await loc.fill(value, { timeout: this.timeoutMs });
           return "ok";
         }

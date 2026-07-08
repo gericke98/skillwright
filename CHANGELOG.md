@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Checkbox / radio replay** (found dogfooding real checkboxes). Capture emits
+  a value-bearing `change` step for a checkbox toggle, and replay drove `change`
+  via `fill()` — but Playwright *throws* when you fill a checkbox (and the relay
+  set `.value` instead of `.checked`), so a captured checkbox/radio interaction
+  failed on replay and the box never toggled. Now capture records the boolean
+  **checked state** as the step value, the Playwright driver uses `setChecked`,
+  and the relay drives `.checked` — idempotent with any paired click step.
+  Covered by fixture e2e (check + uncheck) and relay-injection unit tests. Same
+  class of bug as the earlier native-`<select>` fix.
+
 ### Validated (no code change)
 
 - **Custom ARIA comboboxes** (`dogfood-combobox.mjs`) — the React-Select /

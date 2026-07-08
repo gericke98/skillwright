@@ -34,6 +34,23 @@ describe("buildCaptureStep — event → recording step (§5.2)", () => {
     expect(step.value).toBe("500");
   });
 
+  test("a change on a checkbox records the CHECKED STATE, not the value attr", () => {
+    // The value attr of a checkbox ("on" by default) is meaningless for replay;
+    // what matters is whether it ended up checked. Replay uses setChecked(state),
+    // and fill()-ing a checkbox throws — so the value must be the boolean state.
+    const box = el(`<input type="checkbox" aria-label="Agree" value="on" checked />`) as HTMLInputElement;
+    const step = buildCaptureStep(box, "change");
+    expect(step.value).toBe("true");
+
+    const unchecked = el(`<input type="checkbox" aria-label="Agree" value="on" />`) as HTMLInputElement;
+    expect(buildCaptureStep(unchecked, "change").value).toBe("false");
+  });
+
+  test("a change on a radio records the checked state", () => {
+    const radio = el(`<input type="radio" aria-label="Card" value="card" checked />`) as HTMLInputElement;
+    expect(buildCaptureStep(radio, "change").value).toBe("true");
+  });
+
   test("selectors are wrapped as string[][] to match the recording schema", () => {
     const button = el(`<button aria-label="Go" id="g1">Go</button>`);
     const step = buildCaptureStep(button, "click");
