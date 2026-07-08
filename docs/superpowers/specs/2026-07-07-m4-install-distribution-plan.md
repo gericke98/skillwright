@@ -10,10 +10,12 @@ the whole distill+run pipeline (M1–M3).
 
 **Method:** test-first (TDD), phase-gated.
 
-**Status:** P0 ✅ · P1 ✅ · P2 ✅ (CI + tag-driven release workflows authored & YAML-valid; extension
-builds + zips locally; root README documents install + the unpacked-extension limitation; two-party
-relay token auth already timing-safe from M1) — **actual npm publish + Release creation await a remote**
-· P3 ⏳ next.
+**Status:** P0 ✅ · P1 ✅ · P2 ✅ · P3 ✅ **— M4 GATE CLOSED (criterion 4).** Real **Codex CLI**
+(non-Anthropic agent) discovered the skill in `.agents/skills/` (quoted its description + parsed the
+`[destructive]` effect tag) and executed it in **script mode** (`bskill run <slug>` → dispatched).
+Deterministic acceptance in `docs/acceptance/m4-cross-agent.sh`. The "public artifacts" half is verified
+against the local packed bundle as the stand-in; **actual npm publish + GitHub Release await a remote**
+(the only steps M4 can't complete locally).
 
 ---
 
