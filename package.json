@@ -8,6 +8,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "eval": "tsx packages/evals/src/run-evals.ts",
     "typecheck": "tsc --build",
     "build": "pnpm -r build"
   },

@@ -40,6 +40,19 @@ importers:
         specifier: ^8.18.1
         version: 8.18.1
 
+  packages/evals:
+    dependencies:
+      '@bskill/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@bskill/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.0
+
   packages/extension:
     dependencies:
       '@bskill/shared':
