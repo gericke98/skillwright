@@ -71,6 +71,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Validated (no code change)
 
+- **The real built extension loads and captures, end-to-end.** A new test loads
+  the actual built MV3 extension into Chromium (headed), starts recording via the
+  background, drives a select + checkbox on the live fixture, and asserts the
+  service worker recorded the steps — exercising the manifest, service-worker
+  lifecycle, content-script injection, and page→background message path that unit
+  tests can't reach. Runs headed locally (or under xvfb); skips cleanly on a
+  headless CI box (no display) so it never yields a false failure.
 - **MCP interop with the official client.** The `skillwright mcp` server is now
   proven against the canonical `@modelcontextprotocol/sdk` client (the same
   library OpenAI / LangGraph / Cursor use), spawned as a real subprocess: it
