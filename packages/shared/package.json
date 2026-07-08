@@ -1,0 +1,16 @@
+{
+  "name": "@bskill/shared",
+  "version": "0.0.0",
+  "description": "Shared recording schema types and skill-directory model for bskill",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest run"
+  }
+}

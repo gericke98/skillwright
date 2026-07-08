@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>bskill</title>
+    <style>
+      body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 16px; }
+      h1 { font-size: 16px; margin: 0 0 12px; }
+      label { display: block; margin-bottom: 8px; }
+      input { width: 100%; box-sizing: border-box; padding: 6px; }
+      button { width: 100%; padding: 10px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+      button.recording { background: #c0392b; color: #fff; }
+      .count { margin-top: 12px; color: #555; }
+      .dot { color: #c0392b; }
+    </style>
+  </head>
+  <body>
+    <h1>bskill recorder</h1>
+    <label>
+      Task name
+      <input id="task-name" type="text" placeholder="e.g. Delete invoice" />
+    </label>
+    <button id="toggle">Start recording</button>
+    <p class="count"><span id="count">0</span> steps captured <span id="live"></span></p>
+
+    <hr />
+    <h1>Replay relay</h1>
+    <p style="color:#555;margin-top:0">Run <code>bskill run &lt;skill&gt; --relay</code>, then paste its port + token here and Connect.</p>
+    <label>Port <input id="relay-port" type="number" value="9333" /></label>
+    <label>Token <input id="relay-token" type="text" placeholder="from the bskill run output" /></label>
+    <button id="relay-connect">Connect to relay</button>
+    <p class="count">Relay: <span id="relay-status">not connected</span></p>
+
+    <script type="module" src="./panel.ts"></script>
+  </body>
+</html>

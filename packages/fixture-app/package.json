@@ -1,0 +1,15 @@
+{
+  "name": "@bskill/fixture-app",
+  "version": "0.0.0",
+  "description": "Deterministic local invoice app for bskill record/replay/heal fixtures and evals",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "serve": "tsx src/server.ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
