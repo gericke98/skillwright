@@ -35,6 +35,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Generated `scripts/replay.ts` was a non-functional stub.** It opened a CDP
+  connection and returned the browser without ever executing the steps — so the
+  standalone "runnable skill" artifact replayed nothing. It now genuinely drives
+  the tested replay engine (`runSkill` + `PlaywrightStepDriver` imported from
+  `skillwright`), with destructive steps gated by default (`confirmDestructive`
+  opt-in) and a thrown error on any non-`ok` result. A test asserts it drives
+  the engine and parses as valid TypeScript (via esbuild). The embedded `steps`
+  export and demo-value→`{placeholder}` parameterization are unchanged.
 - **Malformed SKILL.md frontmatter from an unsafe description** 🩹. The
   distiller interpolated the (LLM- or title-derived) `description` raw into the
   YAML frontmatter. A newline, a leading special char, or an over-length value

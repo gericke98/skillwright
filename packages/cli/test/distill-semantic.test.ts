@@ -156,6 +156,24 @@ describe("distillSemantic — orchestrated LLM distiller", () => {
     expect(steps).toHaveLength(2); // the judgment step is not frozen
   });
 
+  test("generated replay.ts actually drives the replay engine (not a stub)", async () => {
+    const skill = await distillSemantic(approveInvoice, backend(), { name: "approve-invoice" });
+    const replay = skill.files["scripts/replay.ts"]!;
+    // The standalone script must genuinely replay via the tested engine, not
+    // open a browser and return it — otherwise the "runnable skill" claim is false.
+    expect(replay).toMatch(/import \{[^}]*runSkill[^}]*PlaywrightStepDriver[^}]*\} from "skillwright"/);
+    expect(replay).toMatch(/runSkill\(/);
+    expect(replay).toMatch(/new PlaywrightStepDriver\(/);
+    // Still guards on the endpoint and still exports the step data.
+    expect(replay).toContain("CHROME_CDP_URL is not set");
+    expect(replay).toMatch(/export const steps = \[/);
+    // Destructive steps stay gated by default (safety), overridable by the caller.
+    expect(replay).toMatch(/confirmDestructive/);
+    // And it must be genuinely valid TypeScript — parse it with esbuild.
+    const { transform } = await import("esbuild");
+    await expect(transform(replay, { loader: "ts" })).resolves.toBeTruthy();
+  });
+
   test("falls back to the zero-LLM stub when the LLM exhausts its schema budget", async () => {
     const failing = new MockBackend(() => {
       throw new SchemaExhaustedError(3, ["nope"], "garbage");
