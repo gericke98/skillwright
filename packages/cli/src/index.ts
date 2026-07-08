@@ -35,3 +35,17 @@ export {
   type FromExtension,
   type ToExtension,
 } from "./relay-protocol";
+export {
+  completeWithRepair,
+  SchemaExhaustedError,
+  extractFirstJson,
+  MockBackend,
+  createAgentCliBackend,
+  createApiBackend,
+  createDefaultBackend,
+  type LlmBackend,
+  type SchemaSpec,
+  type AgentCliOptions,
+  type ApiOptions,
+  type DefaultBackendOptions,
+} from "./llm/index";
