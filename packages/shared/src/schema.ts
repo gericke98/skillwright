@@ -64,7 +64,7 @@ export interface Segment {
   recordedAt: string;
 }
 
-export interface BskillNamespace {
+export interface SkillwrightNamespace {
   version: number;
   segment: Segment;
 }
@@ -72,5 +72,5 @@ export interface BskillNamespace {
 export interface Recording {
   title: string;
   steps: Step[];
-  "x-skillwright": BskillNamespace;
+  "x-skillwright": SkillwrightNamespace;
 }

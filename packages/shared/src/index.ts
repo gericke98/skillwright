@@ -2,7 +2,7 @@ export type {
   Recording,
   Step,
   Segment,
-  BskillNamespace,
+  SkillwrightNamespace,
   EffectTag,
   SelectorStack,
   CapturedRequest,
