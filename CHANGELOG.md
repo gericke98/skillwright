@@ -31,6 +31,10 @@ The full v1 pipeline is built and green; not yet published to npm.
   exposing every installed skill as a callable tool, so tool-consuming agents
   (OpenAI, LangGraph, Cursor, …) can run skills too — not just SKILL.md readers.
   Destructive steps stay gated (surfaced as an MCP error unless opted in).
+- **Runtime inputs.** `skillwright run <skill> --input name=value` (and MCP tool
+  arguments) substitute `{placeholder}` values into steps at run time; a missing
+  required input fails fast before any browser action. Parameterized skills now
+  actually take parameters.
 
 ### Security
 

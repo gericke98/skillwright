@@ -4,6 +4,7 @@ import type { Recording } from "@skillwright/shared";
 import { defaultLibraryDir } from "./paths";
 import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, RelayStepDriver, type ReplayResult } from "./index";
+import { applyInputs } from "./apply-inputs";
 import { mintToken } from "./token";
 import { WsRelayServer } from "./relay-server";
 import { applyPromotedOverlay, buildHealer, confirmCleanRun, makeOnHeal } from "./heal-wiring";
@@ -12,6 +13,8 @@ export interface RelayRunOptions {
   confirmDestructive: boolean;
   port?: number;
   libraryDir?: string;
+  /** Runtime inputs substituted into `{placeholder}` step values/selectors. */
+  inputs?: Record<string, string>;
   /** Called once the relay is listening, with the pairing details to show. */
   onReady?: (info: { url: string; token: string; port: number }) => void;
   /** How long to wait for the extension to pair before giving up. */
@@ -36,8 +39,9 @@ export async function runSkillViaRelay(slug: string, opts: RelayRunOptions): Pro
   const recording = JSON.parse(
     readFileSync(join(dir, "assets", "recording.json"), "utf8"),
   ) as Recording;
-  const steps = toReplaySteps(recording);
-  applyPromotedOverlay(steps, dir);
+  const overlaid = toReplaySteps(recording);
+  applyPromotedOverlay(overlaid, dir);
+  const steps = applyInputs(overlaid, opts.inputs ?? {});
 
   const token = mintToken();
   const relay = new WsRelayServer({ token, port: opts.port ?? 9333 });

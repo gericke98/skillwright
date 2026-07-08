@@ -65,6 +65,7 @@ export {
 export { translateSelector, type LocatorDescriptor } from "./translate-selector";
 export { PlaywrightStepDriver } from "./playwright-driver";
 export { toReplaySteps } from "./to-replay-steps";
+export { applyInputs, MissingInputError } from "./apply-inputs";
 export { runSkillByName, type RunSkillOptions } from "./run";
 export {
   RelayStepDriver,
