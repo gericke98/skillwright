@@ -5,6 +5,15 @@ import { redactValue } from "./redact";
 /** Actions that carry a field value worth recording (post-redaction). */
 const VALUE_ACTIONS = new Set(["change", "input", "select"]);
 
+/** Whether an element is an editing host (a rich-text editor). Prefers the live
+ * `isContentEditable` property but falls back to the attribute so it's robust in
+ * DOM implementations that don't compute the property. */
+function isContentEditable(el: Element): boolean {
+  if ((el as HTMLElement).isContentEditable) return true;
+  const attr = el.getAttribute("contenteditable");
+  return attr !== null && attr !== "false";
+}
+
 /**
  * The REAL element an event acted on. Inside a shadow DOM, `event.target` is
  * retargeted to the shadow host; `event.composedPath()[0]` is the actual inner
@@ -73,16 +82,22 @@ export function buildCaptureStep(
     timestamp: now(),
   };
 
-  if (VALUE_ACTIONS.has(action) && "value" in el) {
+  if (VALUE_ACTIONS.has(action)) {
     const type = el.getAttribute("type") ?? undefined;
-    // A checkbox/radio's `value` attr ("on") is meaningless for replay — the
-    // interaction is about the resulting checked state. Record that boolean so
-    // replay can setChecked() it (fill()-ing a checkbox throws).
-    if (type === "checkbox" || type === "radio") {
-      step.value = String((el as HTMLInputElement).checked);
-    } else {
-      const raw = String((el as HTMLInputElement).value ?? "");
-      step.value = redactValue(raw, { type });
+    if ("value" in el) {
+      // A checkbox/radio's `value` attr ("on") is meaningless for replay — the
+      // interaction is about the resulting checked state. Record that boolean so
+      // replay can setChecked() it (fill()-ing a checkbox throws).
+      if (type === "checkbox" || type === "radio") {
+        step.value = String((el as HTMLInputElement).checked);
+      } else {
+        const raw = String((el as HTMLInputElement).value ?? "");
+        step.value = redactValue(raw, { type });
+      }
+    } else if (isContentEditable(el)) {
+      // Rich-text editors (Gmail/Slack/Notion) are contenteditable divs with no
+      // form `value` — record their text so replay (fill() supports it) works.
+      step.value = redactValue((el.textContent ?? "").trim(), {});
     }
   }
 

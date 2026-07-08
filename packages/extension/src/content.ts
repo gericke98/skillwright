@@ -57,10 +57,26 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
+// Contenteditable rich-text editors (Gmail/Slack/Notion) fire `input`, not
+// `change`, so the change listener never sees them. Capture their final text
+// when focus leaves the editor. Regular form controls already emit `change`, so
+// only editing hosts are handled here (avoids duplicate steps).
+function onEditableBlur(event: FocusEvent): void {
+  if (!recording) return;
+  const target = eventTarget(event);
+  if (!target || !(target as HTMLElement).isContentEditable) return;
+  try {
+    send({ kind: "step", step: buildCaptureStep(target, "change") });
+  } catch {
+    /* never let capture break the page */
+  }
+}
+
 // Capture phase so we observe the interaction before the page's own handlers.
 document.addEventListener("click", onEvent("click"), true);
 document.addEventListener("change", onEvent("change"), true);
 document.addEventListener("keydown", onKeydown, true);
+document.addEventListener("focusout", onEditableBlur, true);
 
 // Navigations are reported by the background via webNavigation; nothing to do
 // here for them. Keydown/scroll coalescing lands with richer capture later.

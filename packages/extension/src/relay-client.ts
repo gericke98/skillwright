@@ -61,6 +61,9 @@ export function fillExpression(selector: string, value: string): string {
       el.checked = ${JSON.stringify(value)} === "true";
     } else if ("value" in el) {
       el.value = ${JSON.stringify(value)};
+    } else if (el.isContentEditable) {
+      // Rich-text editor (contenteditable div): no .value — set its text.
+      el.textContent = ${JSON.stringify(value)};
     }
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));

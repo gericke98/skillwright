@@ -36,4 +36,11 @@ describe("fillExpression — relay-injected value setter", () => {
     expect(runFill("#t", "hello")).toBe(true);
     expect(t.value).toBe("hello");
   });
+
+  test("sets a contenteditable's text (rich-text editors have no .value)", () => {
+    document.body.innerHTML = `<div id="ed" contenteditable="true"></div>`;
+    const ed = document.getElementById("ed") as HTMLElement;
+    expect(runFill("#ed", "Hello team")).toBe(true);
+    expect(ed.textContent).toBe("Hello team");
+  });
 });

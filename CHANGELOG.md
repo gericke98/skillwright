@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Contenteditable / rich-text editor capture** (Gmail, Slack, Notion, comment
+  boxes). These are contenteditable divs — they fire `input` (not `change`) and
+  have no form `value`, so capture recorded *nothing* and the typed text was
+  silently lost. Capture now records the editor's text (redacted) on blur
+  (`focusout`), replay drives it via `fill()` on the DOM path and `.textContent`
+  on the relay path. Covered by capture unit tests, a fixture e2e, and relay
+  unit tests (`dogfood-contenteditable.mjs` probes the DOM path).
+
 ### Fixed
 
 - **Checkbox / radio replay** (found dogfooding real checkboxes). Capture emits

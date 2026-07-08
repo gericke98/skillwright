@@ -51,6 +51,21 @@ describe("buildCaptureStep — event → recording step (§5.2)", () => {
     expect(buildCaptureStep(radio, "change").value).toBe("true");
   });
 
+  test("a change on a contenteditable records its text (rich-text editors)", () => {
+    // Gmail/Slack/Notion editors are contenteditable divs — no form `value`, and
+    // they fire `input`, not `change`. Capture must record the typed text so
+    // replay (fill() supports contenteditable) can reproduce it.
+    const editor = el(`<div contenteditable="true" aria-label="Message body">Hello team</div>`);
+    const step = buildCaptureStep(editor, "change");
+    expect(step.value).toBe("Hello team");
+  });
+
+  test("a contenteditable's text is redacted like any other field", () => {
+    const editor = el(`<div contenteditable="true" aria-label="Notes">token sk-abcdef0123456789abcdef</div>`);
+    const step = buildCaptureStep(editor, "change");
+    expect(step.value).not.toContain("sk-abcdef0123456789abcdef");
+  });
+
   test("selectors are wrapped as string[][] to match the recording schema", () => {
     const button = el(`<button aria-label="Go" id="g1">Go</button>`);
     const step = buildCaptureStep(button, "click");
