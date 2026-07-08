@@ -49,17 +49,30 @@ The full v1 pipeline is built and green; not yet published to npm.
 
 ### Fixed
 
-- **Selector priority (found by dogfooding a real login page).** A stable
-  `text/<label>` selector now ranks ABOVE the brittle deep `nth-of-type` CSS
-  path. Previously a button with visible text but no aria/id got the positional
-  path first, so replay would break on any layout change. Manual dogfood tools
-  live at `packages/integration/dogfood-*.mjs`.
+Four real bugs found by dogfooding the pipeline against real public sites (the
+clean fixture hid them). Manual dogfood tools live at
+`packages/integration/dogfood-*.mjs`.
+
+- **Selector priority.** A stable `text/<label>` now ranks ABOVE the brittle deep
+  `nth-of-type` CSS path (was reversed — replay broke on any layout change).
+- **Nested-URL secret leak** 🔒 (see Security).
+- **Form-field anchors.** Inputs identified only by `placeholder`/`name` (no text)
+  got a brittle positional path; now `[name=…]` and `[placeholder=…]` are stable
+  anchors.
+- **Selector uniqueness.** On a list of identical elements, every one led with an
+  ambiguous `text/` selector matching all of them — the relay would click the
+  wrong row. Selectors that uniquely identify the target are now promoted above
+  ambiguous ones.
 
 ### Security
 
 - Secret redaction at capture time and again during distillation, enforced by
   adversarial eval fixtures (no secret survives in any generated file).
 - Localhost-only relay with two-party, constant-time token auth.
+- **Fixed a real secret-leak vector (found dogfooding):** a token in the page URL
+  was forwarded URL-encoded inside analytics-beacon query params and survived
+  `redactUrl`. URL path/query/fragment components are now tokenized on URL
+  delimiters so nested secrets are caught.
 - **Network-truth effect signal (Capture v2):** effect tags can now be derived
   from the HTTP method a step fired (`GET`→readonly, `POST/PUT/PATCH`→mutating,
   `DELETE`→destructive) and fused as a non-LLM floor that can only raise severity —
