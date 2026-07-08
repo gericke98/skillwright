@@ -103,24 +103,38 @@ export function renderPage(variant: Variant = "a"): string {
   </main>
 
   <script>
-    // Deterministic, no network. Actions mutate the DOM so a replay/assertion
-    // has observable state to check.
+    // Actions mutate the DOM synchronously (so replay/assertions have observable
+    // state) AND fire a fire-and-forget backend call, so there is real network
+    // traffic whose HTTP method is the ground-truth effect (GET/POST/DELETE).
+    var api = function (method, path) {
+      try { fetch(path, { method: method }).catch(function () {}); } catch (e) {}
+    };
     document.addEventListener("click", (e) => {
       const t = e.target;
       if (!(t instanceof HTMLElement)) return;
       const label = t.getAttribute("aria-label") || "";
       const result = document.getElementById("result");
       if (label.startsWith("Approve invoice")) {
+        const inv = label.replace("Approve invoice ", "");
+        api("POST", "/api/invoices/" + inv + "/approve");
         const row = t.closest("tr");
         if (row) row.querySelector(".status").textContent = "approved";
-        result.textContent = "Approved " + label.replace("Approve invoice ", "");
+        result.textContent = "Approved " + inv;
       } else if (label.startsWith("Delete invoice")) {
         const row = t.closest("tr");
         const inv = row && row.getAttribute("data-invoice");
+        api("DELETE", "/api/invoices/" + inv);
         if (row) row.remove();
         result.textContent = "Deleted " + inv;
       } else if (label === "Sign in") {
+        api("POST", "/api/session");
         result.textContent = "Signed in";
+      }
+    });
+    document.addEventListener("change", (e) => {
+      const t = e.target;
+      if (t instanceof HTMLElement && (t.getAttribute("aria-label") || "").startsWith("Search")) {
+        api("GET", "/api/invoices?q=" + encodeURIComponent(t.value || ""));
       }
     });
   </script>

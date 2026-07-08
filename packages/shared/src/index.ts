@@ -8,6 +8,12 @@ export type {
   CapturedRequest,
 } from "./schema";
 export { deriveNetworkEffect, correlateRequests } from "./network-effect";
+export {
+  cdpRequestToCaptured,
+  NetworkCapturer,
+  type CdpRequestEvent,
+  type CdpLike,
+} from "./network-capture";
 export { EFFECT_SEVERITY } from "./schema";
 export { roundUpEffect } from "./effect";
 export { classifyStepEffect, type StepEffectInput } from "./classify-effect";

@@ -16,6 +16,13 @@ export interface FixtureServer {
 export function startFixtureServer(port = 0): Promise<FixtureServer> {
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
+    // Backend endpoints the page calls (GET search, POST approve, DELETE delete)
+    // so there is real network traffic to capture — the method is the effect truth.
+    if (url.pathname.startsWith("/api/")) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
     const variant: Variant = url.searchParams.get("variant") === "b" ? "b" : "a";
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(renderPage(variant));
