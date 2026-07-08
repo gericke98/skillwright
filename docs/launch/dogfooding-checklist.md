@@ -43,15 +43,20 @@ three real bugs (selector priority, a nested-URL secret leak, missing form-field
 anchors):
 
 ```bash
-npx tsx packages/integration/dogfood-realsite.mjs    # replay on a real site
-npx tsx packages/integration/dogfood-capture.mjs     # capture+distill on real HTML
+npx tsx packages/integration/dogfood-realsite.mjs     # replay on a real site
+npx tsx packages/integration/dogfood-capture.mjs      # capture+distill on real HTML
 npx tsx packages/integration/dogfood-network.mjs      # network capture + redaction
 npx tsx packages/integration/dogfood-spa.mjs          # selector quality on a real SPA
 npx tsx packages/integration/dogfood-roundtrip.mjs    # full capture→distill→replay
+npx tsx packages/integration/dogfood-ambiguity.mjs    # selector uniqueness on a list
+npx tsx packages/integration/dogfood-select.mjs       # <select> replay
+npx tsx packages/integration/dogfood-login.mjs        # full form fill + submit (login)
 ```
 
 They hit external sites (flaky), so they're tools, not CI tests. Any real break
-becomes a fixture regression test + a fix.
+becomes a fixture regression test + a fix. So far these found + fixed **five real
+bugs** (selector priority, a nested-URL secret leak, form-field anchors, selector
+uniqueness, and `<select>` replay).
 
 ## Turn findings into the roadmap
 
