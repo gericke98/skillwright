@@ -7,7 +7,7 @@ import { writeSkillDirectory } from "../src/index";
 
 let base: string;
 beforeEach(() => {
-  base = mkdtempSync(join(tmpdir(), "bskill-test-"));
+  base = mkdtempSync(join(tmpdir(), "skillwright-test-"));
 });
 afterEach(() => {
   rmSync(base, { recursive: true, force: true });

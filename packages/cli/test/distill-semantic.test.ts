@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@bskill/shared";
+import type { Recording } from "@skillwright/shared";
 import { MockBackend } from "../src/llm/mock-backend";
 import { SchemaExhaustedError } from "../src/llm/backend";
 import { distillSemantic } from "../src/distill/semantic";
@@ -8,7 +8,7 @@ function rec(title: string, steps: Recording["steps"]): Recording {
   return {
     title,
     steps,
-    "x-bskill": {
+    "x-skillwright": {
       version: 1,
       segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" },
     },
@@ -64,7 +64,7 @@ describe("distillSemantic — orchestrated LLM distiller", () => {
     const skill = await distillSemantic(approveInvoice, backend(), { name: "approve-invoice" });
     const md = skill.files["SKILL.md"]!;
     expect(md).toMatch(/^description:\s*Approves a pending invoice/m);
-    expect(md).toContain("bskill-inputs");
+    expect(md).toContain("skillwright-inputs");
     expect(md).toContain("invoice_number");
   });
 

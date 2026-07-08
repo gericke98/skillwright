@@ -1,18 +1,18 @@
 /**
  * On-demand eval entrypoint (`pnpm eval`). Runs the golden fixtures through the
  * REAL semantic distiller against a live backend (agent-cli by default; api if
- * BSKILL_API_KEY is set) and prints the scorecard, exiting non-zero if any hard
+ * SKILLWRIGHT_API_KEY is set) and prints the scorecard, exiting non-zero if any hard
  * gate fails. This is the M2 release gate — token cost is real, so it runs
  * on-demand, not per-CI-push.
  */
-import { distillSemantic, createDefaultBackend } from "bskill";
-import type { Recording } from "@bskill/shared";
+import { distillSemantic, createDefaultBackend } from "skillwright";
+import type { Recording } from "@skillwright/shared";
 import { runEvals } from "./runner";
 import { goldenFixtures } from "./fixtures";
 
 async function main(): Promise<void> {
   const backend = createDefaultBackend();
-  process.stdout.write(`bskill distiller evals — backend: ${backend.name}\n\n`);
+  process.stdout.write(`skillwright distiller evals — backend: ${backend.name}\n\n`);
   const distiller = (rec: Recording) => distillSemantic(rec, backend, {});
 
   const report = await runEvals(distiller, goldenFixtures);

@@ -28,7 +28,7 @@ export function applyPromotedOverlay(steps: ReplayStep[], skillDir: string): voi
 }
 
 /** Build the tier-3 healer from the default backend, or undefined if no backend
- * is available (then `bskill run` is deterministic replay only, no heal). */
+ * is available (then `skillwright run` is deterministic replay only, no heal). */
 export function buildHealer(): HealFn | undefined {
   try {
     return createLlmHealer(createDefaultBackend());

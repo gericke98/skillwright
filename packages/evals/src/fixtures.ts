@@ -1,4 +1,4 @@
-import type { Recording, Step } from "@bskill/shared";
+import type { Recording, Step } from "@skillwright/shared";
 import type { FixtureCase } from "./runner";
 
 /**
@@ -14,7 +14,7 @@ function rec(title: string, steps: Step[]): Recording {
   return {
     title,
     steps,
-    "x-bskill": {
+    "x-skillwright": {
       version: 1,
       segment: { id: `seg-${title}`, parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" },
     },

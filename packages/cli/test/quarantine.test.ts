@@ -14,14 +14,14 @@ import {
 const RECORDING = JSON.stringify({
   title: "Delete invoice",
   steps: [{ type: "click", effect: "destructive", selectors: [["aria/Delete"]] }],
-  "x-bskill": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07" } },
+  "x-skillwright": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07" } },
 });
 
 function makeSkill(): string {
-  const dir = mkdtempSync(join(tmpdir(), "bskill-q-"));
+  const dir = mkdtempSync(join(tmpdir(), "skillwright-q-"));
   writeFileSync(
     join(dir, "SKILL.md"),
-    '---\nname: delete-invoice\ndescription: Deletes.\nmetadata:\n  author: bskill\n  version: "1.0"\n---\n# Delete\n',
+    '---\nname: delete-invoice\ndescription: Deletes.\nmetadata:\n  author: skillwright\n  version: "1.0"\n---\n# Delete\n',
   );
   writeFileSync(join(dir, "replay.ts"), "export const steps = [] as const;\n");
   mkdirSync(join(dir, "references"), { recursive: true });
@@ -91,7 +91,7 @@ describe("quarantine store — quarantine-before-promote (§6.2)", () => {
     expect(loadCandidates(dir)).toHaveLength(0);
   });
 
-  test("bskill promote --force promotes an unconfirmed candidate", () => {
+  test("skillwright promote --force promotes an unconfirmed candidate", () => {
     const dir = makeSkill();
     recordHeal(dir, { stepIndex: 0, selector: "aria/Remove" });
     const result = promote(dir, { force: true });

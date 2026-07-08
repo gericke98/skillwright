@@ -103,7 +103,7 @@ function appendChangelog(skillDir: string, version: string, promoted: Candidate[
 /**
  * Promote quarantined candidates to canonical (§6.2). Without `force`, only
  * candidates with ≥ PROMOTE_THRESHOLD confirmations are promoted; `force`
- * promotes all (the `bskill promote` escape hatch). Promotion writes the healed
+ * promotes all (the `skillwright promote` escape hatch). Promotion writes the healed
  * selector into `promoted-selectors.json` (a keyed overlay the run loop merges
  * over recording.json), bumps the version, and appends the changelog.
  * `assets/recording.json` is immutable evidence and is NEVER modified.

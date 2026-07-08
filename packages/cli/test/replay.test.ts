@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { EffectTag } from "@bskill/shared";
+import type { EffectTag } from "@skillwright/shared";
 import { runSkill, type ReplayStep, type StepDriver } from "../src/index";
 
 function step(effect: EffectTag, selectors: string[]): ReplayStep {

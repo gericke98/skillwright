@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Recording } from "@bskill/shared";
+import type { Recording } from "@skillwright/shared";
 import { defaultLibraryDir } from "./paths";
 import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, RelayStepDriver, type ReplayResult } from "./index";
@@ -46,11 +46,11 @@ export async function runSkillViaRelay(slug: string, opts: RelayRunOptions): Pro
 
   try {
     const timeoutMs =
-      opts.extensionTimeoutMs ?? (Number(process.env.BSKILL_RELAY_TIMEOUT_MS) || 120_000);
+      opts.extensionTimeoutMs ?? (Number(process.env.SKILLWRIGHT_RELAY_TIMEOUT_MS) || 120_000);
     await withTimeout(
       relay.waitForExtension(),
       timeoutMs,
-      "the bskill extension did not connect — open the side panel and click Connect",
+      "the skillwright extension did not connect — open the side panel and click Connect",
     );
     const result = await runSkill(steps, new RelayStepDriver(relay.transport), {
       confirmDestructive: opts.confirmDestructive,

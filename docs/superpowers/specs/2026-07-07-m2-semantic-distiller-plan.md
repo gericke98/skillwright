@@ -75,7 +75,7 @@ quality rather than rubber-stamping. (Destructive-tag may already pass via the h
   throw a typed `SchemaExhaustedError` (Phase 2's stub fallback catches it).
 - **`agent-cli` adapter** — autodetect `claude` / `codex` / `gemini` binaries, invoke headless/
   non-interactive, pipe prompt in, capture stdout, run it through the extractor.
-- **`api` adapter** — Anthropic API via `BSKILL_API_KEY`, native structured output where available,
+- **`api` adapter** — Anthropic API via `SKILLWRIGHT_API_KEY`, native structured output where available,
   retry budget 1.
 - **`MockBackend`** — returns canned JSON keyed by prompt fixture; the unit-test workhorse.
 
@@ -92,11 +92,11 @@ Replace the M1 template internals with LLM passes. Every sub-capability is unit-
 **Deliverables** (rework `distill.ts` into orchestrated passes)
 1. **Intent inference** — task purpose + keyword-rich, third-person `description`.
 2. **Parameterization** — detect demo-typed values, promote to a typed input schema
-   (`metadata.bskill-inputs`), rewrite step values as `{placeholders}`; **secrets are always params**.
+   (`metadata.skillwright-inputs`), rewrite step values as `{placeholders}`; **secrets are always params**.
 3. **Semantic narrative** — per-step NL with selector rationale/gotchas → SKILL.md body (<500 lines)
    + full `references/walkthrough.md`.
 4. **Effect tagging** — LLM tag per step, then `roundUpEffect([llmTag, heuristicTag])` (decision #1);
-   round-up-on-uncertainty; write into `x-bskill`, mirror in walkthrough, carry into `replay.ts` meta.
+   round-up-on-uncertainty; write into `x-skillwright`, mirror in walkthrough, carry into `replay.ts` meta.
 5. **`agent:` prose steps** — judgment-dependent steps (extraction, conditional branch, wait-for-human)
    emitted as structured prose in SKILL.md, never frozen into `replay.ts`.
 6. **Second-pass redaction net** — re-scan every output file before write (decision #2).
@@ -113,7 +113,7 @@ now pass their plumbing assertions.
 
 **Deliverables**
 - Run the Phase-0 golden fixtures through the **real** distiller with a real agent-cli backend
-  (local `claude`) and/or the api backend (CI secret `BSKILL_API_KEY`).
+  (local `claude`) and/or the api backend (CI secret `SKILLWRIGHT_API_KEY`).
 - Iterate prompts against the scorecard until thresholds are met.
 - `pnpm eval` command — on-demand + on prompt-change only (token cost), **not per-push** (§13).
 - Record the passing scorecard as the baseline benchmark for future prompt iteration.
@@ -121,7 +121,7 @@ now pass their plumbing assertions.
 **P3 finding — agent-cli prompts need purpose framing.** A bare "return this JSON" prompt to the
 `claude` agent-cli backend is *refused* (it's a guardrailed agent, not a JSON endpoint, and won't emit
 canned tokens without knowing what they gate). Fixed by prepending a context PREAMBLE to every pass
-("you are a component of bskill, values are pre-redacted, return only the JSON") — the agent then
+("you are a component of skillwright, values are pre-redacted, return only the JSON") — the agent then
 cooperates. This is load-bearing for the agent-cli backend, captured in `distill/passes.ts`.
 
 **Gate (= M2 milestone gate):**
@@ -138,7 +138,7 @@ here, revisit the safety-gate trust model **before M3 ships**.
 ## Out of scope for M2 (deferred to M3/M4)
 - Tier-3 heal / write-back / quarantine-promote, and the runtime replay safety gate → **M3**
   (M3 *consumes* M2's effect tags).
-- `bskill install`, npm publish, extension delivery, release CI → **M4**.
+- `skillwright install`, npm publish, extension delivery, release CI → **M4**.
 
 ## Sequencing summary
 ```

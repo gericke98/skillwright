@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
-import { renderPage } from "@bskill/fixture-app";
-import { computeSelectorStack, redactValue } from "@bskill/extension";
-import { distill } from "bskill";
-import type { Recording, Step } from "@bskill/shared";
+import { renderPage } from "@skillwright/fixture-app";
+import { computeSelectorStack, redactValue } from "@skillwright/extension";
+import { distill } from "skillwright";
+import type { Recording, Step } from "@skillwright/shared";
 
 /**
  * The browser-free half of the M1 round-trip: parse the REAL fixture page,
@@ -38,7 +38,7 @@ describe("record → distill against the real fixture app", () => {
         stepFor(doc, "Search invoices", "change", "INV-001"),
         stepFor(doc, "Delete invoice INV-001", "click"),
       ],
-      "x-bskill": {
+      "x-skillwright": {
         version: 1,
         segment: { id: "seg-int", parentSkill: null, recordedAt: "2026-07-06T00:00:00.000Z" },
       },

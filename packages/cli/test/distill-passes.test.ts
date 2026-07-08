@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@bskill/shared";
+import type { Recording } from "@skillwright/shared";
 import { MockBackend } from "../src/llm/mock-backend";
 import { inferIntent, inferParams, inferEffects, narrate } from "../src/distill/passes";
 
@@ -7,7 +7,7 @@ function rec(steps: Recording["steps"]): Recording {
   return {
     title: "Approve an invoice",
     steps,
-    "x-bskill": {
+    "x-skillwright": {
       version: 1,
       segment: { id: "s", parentSkill: null, recordedAt: "2026-07-07T00:00:00.000Z" },
     },

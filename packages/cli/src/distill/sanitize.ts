@@ -4,7 +4,7 @@ import {
   redactValue,
   valueLooksSecret,
   type Recording,
-} from "@bskill/shared";
+} from "@skillwright/shared";
 import { stepLabel } from "../step-label";
 
 /** A per-step view safe to embed in an LLM prompt — never carries a secret. */

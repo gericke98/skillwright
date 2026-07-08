@@ -1,7 +1,7 @@
 {
-  "name": "@bskill/shared",
+  "name": "@skillwright/shared",
   "version": "0.0.0",
-  "description": "Shared recording schema types and skill-directory model for bskill",
+  "description": "Shared recording schema types and skill-directory model for skillwright",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",

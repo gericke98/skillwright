@@ -1,6 +1,6 @@
-# bskill — Browser Skill Learner
+# skillwright — Browser Skill Learner
 
-Capture a browser task once, and `bskill` compiles it into a portable
+Capture a browser task once, and `skillwright` compiles it into a portable
 [Agent Skill](https://agentskills.io) that any agent can replay against your
 real, authenticated Chrome session — as a deterministic script **or** as
 instructions an agent can reason about.
@@ -15,12 +15,12 @@ when the target site changes.
 **CLI** (published to npm with provenance):
 
 ```bash
-npm i -g bskill      # or: npx bskill <command>
+npm i -g skillwright      # or: npx skillwright <command>
 ```
 
 **Extension** (v1 ships as an unpacked developer-mode load):
 
-1. Download `bskill-extension.zip` from the latest [GitHub Release](../../releases).
+1. Download `skillwright-extension.zip` from the latest [GitHub Release](../../releases).
 2. Unzip it.
 3. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**,
    and select the unzipped folder.
@@ -37,21 +37,21 @@ npm i -g bskill      # or: npx bskill <command>
 ```bash
 # 1. Record a task in Chrome via the extension side panel, then it saves a
 #    recording.json. Distill it into a skill (LLM-backed):
-bskill distill recording.json --semantic
+skillwright distill recording.json --semantic
 
 # 2. Replay against your real Chrome via the relay:
-bskill relay                        # hosts the WS endpoint; pair in the side panel
-bskill run <skill> --confirm-destructive
+skillwright relay                        # hosts the WS endpoint; pair in the side panel
+skillwright run <skill> --confirm-destructive
 
 # 3. Make the skill discoverable to your agents (Claude Code + Codex etc.):
-bskill install <skill> --project .  # symlinks into .claude/skills/ and .agents/skills/
-bskill list                         # library + install locations
-bskill sync                         # refresh copy-mode installs
-bskill promote <skill>              # promote a proven heal to canonical
+skillwright install <skill> --project .  # symlinks into .claude/skills/ and .agents/skills/
+skillwright list                         # library + install locations
+skillwright sync                         # refresh copy-mode installs
+skillwright promote <skill>              # promote a proven heal to canonical
 ```
 
 The distiller backend is pluggable: **agent-cli** by default (autodetects
-`claude`/`codex`/`gemini`), or the **Anthropic API** via `BSKILL_API_KEY`.
+`claude`/`codex`/`gemini`), or the **Anthropic API** via `SKILLWRIGHT_API_KEY`.
 
 ## Safety model
 
@@ -65,5 +65,5 @@ no credential lands in a shareable artifact. See
 ## Development
 
 pnpm monorepo. `pnpm test` · `pnpm typecheck` · fixture app:
-`pnpm --filter @bskill/fixture-app serve`. The distiller eval suite runs
+`pnpm --filter @skillwright/fixture-app serve`. The distiller eval suite runs
 on-demand (token cost): `pnpm eval`.

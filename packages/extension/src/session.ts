@@ -1,4 +1,4 @@
-import type { Recording, Step } from "@bskill/shared";
+import type { Recording, Step } from "@skillwright/shared";
 import { redactUrl } from "./redact";
 import { coalesceSteps } from "./coalesce";
 
@@ -62,7 +62,7 @@ export class RecordingSession {
     return {
       title: this.title,
       steps: coalesceSteps(this.steps),
-      "x-bskill": {
+      "x-skillwright": {
         version: 1,
         segment: { id: this.segmentId, parentSkill: null, recordedAt: this.recordedAt },
       },

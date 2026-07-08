@@ -1,4 +1,4 @@
-import type { EffectTag } from "@bskill/shared";
+import type { EffectTag } from "@skillwright/shared";
 
 export type GateDecision = "proceed" | "confirm" | "halt";
 

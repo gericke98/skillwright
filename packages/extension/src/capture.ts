@@ -1,4 +1,4 @@
-import { classifyStepEffect, type Step } from "@bskill/shared";
+import { classifyStepEffect, type Step } from "@skillwright/shared";
 import { computeSelectorStack } from "./selector";
 import { redactValue } from "./redact";
 

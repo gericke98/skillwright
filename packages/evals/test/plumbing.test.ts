@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { distillSemantic, MockBackend, extractFirstJson } from "bskill";
-import type { Recording } from "@bskill/shared";
+import { distillSemantic, MockBackend, extractFirstJson } from "skillwright";
+import type { Recording } from "@skillwright/shared";
 import { runEvals } from "../src/runner";
 import { goldenFixtures } from "../src/fixtures";
 

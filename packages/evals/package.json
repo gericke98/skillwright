@@ -1,7 +1,7 @@
 {
-  "name": "@bskill/evals",
+  "name": "@skillwright/evals",
   "version": "0.0.0",
-  "description": "bskill distiller eval suite — golden recordings scored against the M2 rubric",
+  "description": "skillwright distiller eval suite — golden recordings scored against the M2 rubric",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",
@@ -11,8 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "bskill": "workspace:*",
-    "@bskill/shared": "workspace:*"
+    "skillwright": "workspace:*",
+    "@skillwright/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

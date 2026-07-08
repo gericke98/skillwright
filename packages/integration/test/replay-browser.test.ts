@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
-import { startFixtureServer, type FixtureServer } from "@bskill/fixture-app";
-import { runSkill, PlaywrightStepDriver, type ReplayStep } from "bskill";
+import { startFixtureServer, type FixtureServer } from "@skillwright/fixture-app";
+import { runSkill, PlaywrightStepDriver, type ReplayStep } from "skillwright";
 
 /**
  * The M1 replay path against a REAL browser engine (Playwright Chromium) + the

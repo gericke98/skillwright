@@ -6,7 +6,7 @@ beforeEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("resolveElement — bskill selector → element in the page", () => {
+describe("resolveElement — skillwright selector → element in the page", () => {
   test("aria/<name> resolves via aria-label", () => {
     document.body.innerHTML = `<button aria-label="Delete invoice INV-001">Delete</button>`;
     const el = resolveElement("aria/Delete invoice INV-001", document);

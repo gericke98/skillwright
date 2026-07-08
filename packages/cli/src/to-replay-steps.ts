@@ -1,4 +1,4 @@
-import { classifyStepEffect, type Recording } from "@bskill/shared";
+import { classifyStepEffect, type Recording } from "@skillwright/shared";
 import type { ReplayStep } from "./replay";
 
 /**

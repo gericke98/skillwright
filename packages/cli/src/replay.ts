@@ -1,4 +1,4 @@
-import type { EffectTag } from "@bskill/shared";
+import type { EffectTag } from "@skillwright/shared";
 import { gateStep } from "./safety-gate";
 
 export interface ReplayStep {

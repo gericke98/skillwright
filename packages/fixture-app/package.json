@@ -1,7 +1,7 @@
 {
-  "name": "@bskill/fixture-app",
+  "name": "@skillwright/fixture-app",
   "version": "0.0.0",
-  "description": "Deterministic local invoice app for bskill record/replay/heal fixtures and evals",
+  "description": "Deterministic local invoice app for skillwright record/replay/heal fixtures and evals",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",

@@ -1,5 +1,5 @@
 {
-  "name": "bskill-monorepo",
+  "name": "skillwright-monorepo",
   "version": "0.0.0",
   "private": true,
   "description": "Browser Skill Learner — capture a browser task once, replay it as a portable Agent Skill",

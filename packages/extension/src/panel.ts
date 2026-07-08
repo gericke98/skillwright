@@ -51,7 +51,7 @@ relayConnect.addEventListener("click", () => {
   const port = Number(relayPort.value) || 9333;
   const token = relayToken.value.trim();
   if (!token) {
-    relayStatus.textContent = "enter the token from bskill run";
+    relayStatus.textContent = "enter the token from skillwright run";
     return;
   }
   void send({ kind: "connectRelay", port, token });

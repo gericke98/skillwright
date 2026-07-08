@@ -35,7 +35,7 @@ export function createLlmHealer(backend: LlmBackend): HealFn {
   return async (step: ReplayStep, snapshot: PageSnapshot): Promise<string | null> => {
     const label = targetLabel(step.selectors);
     const prompt = [
-      "You are the selector-heal component of bskill. A recorded automation step's selector no longer",
+      "You are the selector-heal component of skillwright. A recorded automation step's selector no longer",
       "matches the page (the site changed). Propose ONE new selector that targets the same control.",
       `Step: ${step.type}${label ? ` on "${label}"` : ""} (effect: ${step.effect})`,
       step.value !== undefined ? `Value it enters: ${step.value}` : "",
