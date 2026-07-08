@@ -135,6 +135,12 @@ export function distill(recording: Recording, opts: DistillOptions): SkillDirect
   assertSingleSegment(recording);
   const slug = toSlug(opts.name ?? recording.title);
   const tagged = tagSteps(recording);
+  // Effect tags are written back into the recording's steps (§6.1.4) so
+  // recording.json is the single source of truth for effect-by-original-index.
+  const taggedRecording: Recording = {
+    ...recording,
+    steps: recording.steps.map((step, i) => ({ ...step, effect: tagged[i]!.effect })),
+  };
   return {
     slug,
     files: {
@@ -142,7 +148,7 @@ export function distill(recording: Recording, opts: DistillOptions): SkillDirect
       "scripts/replay.ts": renderReplayScript(slug, tagged),
       "references/walkthrough.md": renderWalkthrough(recording.title, tagged),
       "references/CHANGELOG.md": renderChangelog(slug, recording["x-bskill"].segment.recordedAt),
-      "assets/recording.json": JSON.stringify(recording, null, 2),
+      "assets/recording.json": JSON.stringify(taggedRecording, null, 2),
     },
   };
 }

@@ -20,6 +20,18 @@ export interface StepNarrative {
   agentStep: boolean;
 }
 
+/**
+ * Shared context framing. agent-cli backends are full guardrailed agents, not
+ * bare JSON endpoints — without knowing WHY the JSON is wanted they (correctly)
+ * refuse to emit "canned tokens on command". Establishing the legitimate task
+ * up front is what makes them cooperate; it's load-bearing for the agent-cli
+ * backend, not decoration.
+ */
+const PREAMBLE =
+  "You are a component of bskill, a developer tool that turns a browser-task recording the user " +
+  "made on their own machine into a reusable, shareable automation skill. All values below are " +
+  "already secret-redacted. Do the requested transformation and return ONLY the requested JSON.";
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
@@ -48,6 +60,7 @@ const intentSpec: SchemaSpec<Intent> = {
 
 export function inferIntent(recording: Recording, backend: LlmBackend): Promise<Intent> {
   const prompt = [
+    PREAMBLE,
     "TASK: infer intent",
     'Infer the task title and a keyword-rich, third-person description ("what it does and when to use it")',
     "for this browser task recording (values are redacted).",
@@ -79,6 +92,7 @@ const paramsSpec: SchemaSpec<{ params: ParamDef[] }> = {
 
 export async function inferParams(recording: Recording, backend: LlmBackend): Promise<ParamDef[]> {
   const prompt = [
+    PREAMBLE,
     "TASK: extract parameters",
     "Identify demo-typed values that should become reusable inputs. Secrets are ALWAYS parameters.",
     "For each, give name (snake_case), type, required (boolean), and the exact demoValue as seen below.",
@@ -112,6 +126,7 @@ function effectsSpec(count: number): SchemaSpec<{ effects: EffectTag[] }> {
 export async function inferEffects(recording: Recording, backend: LlmBackend): Promise<EffectTag[]> {
   const summaries = summarizeSteps(recording);
   const prompt = [
+    PREAMBLE,
     "TASK: classify effects",
     'For EACH step below, in order, classify its effect on the world: "readonly" | "mutating" | "destructive".',
     "Round UP when uncertain (prefer destructive). delete/send/submit/pay/approve/transfer/publish are destructive.",
@@ -145,10 +160,13 @@ function narrativeSpec(count: number): SchemaSpec<{ steps: StepNarrative[] }> {
 export async function narrate(recording: Recording, backend: LlmBackend): Promise<StepNarrative[]> {
   const summaries = summarizeSteps(recording);
   const prompt = [
+    PREAMBLE,
     "TASK: narrate steps",
     "Write a concise natural-language instruction for EACH step below, in order, noting selector rationale or gotchas.",
-    "Set agentStep:true ONLY for a step that needs live judgment (reading a value, a conditional branch, waiting",
-    "for a human) rather than a fixed action; otherwise agentStep:false.",
+    "Set agentStep:true ONLY for a step that CANNOT be replayed deterministically — it needs live judgment such as",
+    "reading a value to reuse later, a conditional branch, or waiting for a human. A recorded click or text entry is",
+    "ALWAYS a fixed action (agentStep:false) even when it is destructive/irreversible — risk is handled by the effect",
+    "tag and the safety gate, NOT by demoting the step to prose. Do not mark a concrete recorded action agentStep.",
     "Steps:",
     stepsJson(summaries),
     'Return JSON: { "steps": [ { "description", "agentStep" }, ... one per step ] }',

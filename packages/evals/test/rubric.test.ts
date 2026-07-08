@@ -2,13 +2,18 @@ import { describe, expect, test } from "vitest";
 import type { SkillDirectory } from "@bskill/cli";
 import { scoreFixture, type Expectations } from "../src/rubric";
 
-/** Build a replay.ts body the scorer can parse effect tags out of. */
-function replayScript(steps: Array<{ type: string; effect: string }>): string {
-  return `export const steps = ${JSON.stringify(
-    steps.map((s) => ({ ...s, selectors: [] })),
-    null,
-    2,
-  )} as const;\n`;
+/**
+ * Build a recording.json body the scorer reads effect tags out of. This is the
+ * source of truth: it keeps EVERY step at its original index (unlike replay.ts,
+ * which drops agent-judgment steps and re-indexes), so destructiveStepIndices
+ * line up even when a step is emitted as agent prose.
+ */
+function recordingJson(steps: Array<{ type: string; effect: string }>): string {
+  return JSON.stringify({
+    title: "Demo",
+    steps: steps.map((s) => ({ ...s, selectors: [] })),
+    "x-bskill": { version: 1, segment: { id: "s", parentSkill: null, recordedAt: "2026" } },
+  });
 }
 
 function skill(files: Partial<Record<string, string>>): SkillDirectory {
@@ -16,9 +21,9 @@ function skill(files: Partial<Record<string, string>>): SkillDirectory {
     slug: "demo",
     files: {
       "SKILL.md": "---\nname: demo\ndescription: A demo skill.\n---\n# Demo\n",
-      "scripts/replay.ts": replayScript([{ type: "click", effect: "mutating" }]),
+      "scripts/replay.ts": "export const steps = [] as const;\n",
       "references/walkthrough.md": "# Demo\n",
-      "assets/recording.json": "{}",
+      "assets/recording.json": recordingJson([{ type: "click", effect: "mutating" }]),
       ...files,
     },
   };
@@ -58,7 +63,7 @@ describe("scoreFixture — secret non-leakage (hard gate)", () => {
 describe("scoreFixture — destructive-tag recall (hard gate)", () => {
   test("recall < 1 when an expected-destructive step is under-tagged", () => {
     const produced = skill({
-      "scripts/replay.ts": replayScript([
+      "assets/recording.json": recordingJson([
         { type: "click", effect: "mutating" }, // step 0 should have been destructive
       ]),
     });
@@ -70,13 +75,29 @@ describe("scoreFixture — destructive-tag recall (hard gate)", () => {
 
   test("full recall when every expected-destructive step is tagged destructive", () => {
     const produced = skill({
-      "scripts/replay.ts": replayScript([
+      "assets/recording.json": recordingJson([
         { type: "click", effect: "destructive" },
         { type: "change", effect: "mutating" },
       ]),
     });
     const score = scoreFixture(produced, { ...baseExpectations, destructiveStepIndices: [0] });
     expect(score.hardGates.destructiveTagRecall.value).toBe(1);
+    expect(score.hardGates.destructiveTagRecall.pass).toBe(true);
+  });
+
+  test("recall aligns to ORIGINAL indices even when a step is agent-excluded from replay.ts", () => {
+    // Delete is step 3 in the recording but emitted as agent prose (absent from
+    // replay.ts). recording.json still carries it at index 3, tagged destructive.
+    const produced = skill({
+      "assets/recording.json": recordingJson([
+        { type: "navigate", effect: "readonly" },
+        { type: "change", effect: "mutating" },
+        { type: "click", effect: "mutating" },
+        { type: "click", effect: "destructive" },
+      ]),
+      "scripts/replay.ts": "export const steps = [] as const;\n", // agent step dropped
+    });
+    const score = scoreFixture(produced, { ...baseExpectations, destructiveStepIndices: [3] });
     expect(score.hardGates.destructiveTagRecall.pass).toBe(true);
   });
 

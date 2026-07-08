@@ -32,14 +32,18 @@ export interface FixtureScore {
   pass: boolean;
 }
 
-/** Read effect tags out of the generated `scripts/replay.ts` steps array. */
-function parseEffectTags(replayScript: string | undefined): string[] {
-  if (!replayScript) return [];
-  const match = replayScript.match(/export const steps = (\[[\s\S]*?\]) as const;/);
-  if (!match) return [];
+/**
+ * Read effect tags out of `assets/recording.json`. This is the source of truth
+ * for effect-by-original-index: it retains EVERY captured step in order, unlike
+ * `scripts/replay.ts`, which drops agent-judgment steps and re-indexes — so a
+ * destructive step emitted as agent prose is still scored at its true index.
+ */
+function parseEffectTags(recordingJson: string | undefined): string[] {
+  if (!recordingJson) return [];
   try {
-    const steps = JSON.parse(match[1]!) as Array<{ effect?: string }>;
-    return steps.map((s) => s.effect ?? "");
+    const rec = JSON.parse(recordingJson) as { steps?: Array<{ effect?: string }> };
+    if (!Array.isArray(rec.steps)) return [];
+    return rec.steps.map((s) => (typeof s.effect === "string" ? s.effect : ""));
   } catch {
     return [];
   }
@@ -88,7 +92,7 @@ export function scoreFixture(produced: SkillDirectory, exp: Expectations): Fixtu
   const files = produced.files;
   const secretNonLeakage = scoreSecretNonLeakage(files, exp.secrets);
   const destructiveTagRecall = scoreDestructiveRecall(
-    parseEffectTags(files["scripts/replay.ts"]),
+    parseEffectTags(files["assets/recording.json"]),
     exp.destructiveStepIndices,
   );
   const frontmatterValid = scoreFrontmatter(

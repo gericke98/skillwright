@@ -9,9 +9,11 @@ with the hardened agent-cli adapter; golden-fixture evals built alongside the pr
 
 **Method:** test-first (TDD), phase-gated. Each phase has a falsifiable gate; do not advance until green.
 
-**Status:** P0 ✅ done (eval rig fails on zero-LLM baseline as designed) · P1 ✅ done (backend +
-adapters; live-CLI smoke folded into P3) · P2 ✅ done (semantic distiller; golden fixtures pass on
-MockBackend; `skills-ref` binary unavailable → structural frontmatter conformance stands in) · P3 ⏳ next.
+**Status:** P0 ✅ · P1 ✅ · P2 ✅ · P3 ✅ **— M2 GATE CLOSED.** Real distiller scored 6/6 on the live
+`agent-cli:claude` backend (destructive recall 1.00, secret-leak 0, frontmatter valid). Baseline
+recorded in `packages/evals/BASELINE.md`. `skills-ref` binary unavailable → structural frontmatter
+conformance stands in. Residual-risk checkpoint (LLM effect tags): destructive recall was 100% — no
+re-evaluation of the safety model needed before M3.
 
 ---
 
@@ -115,6 +117,12 @@ now pass their plumbing assertions.
 - Iterate prompts against the scorecard until thresholds are met.
 - `pnpm eval` command — on-demand + on prompt-change only (token cost), **not per-push** (§13).
 - Record the passing scorecard as the baseline benchmark for future prompt iteration.
+
+**P3 finding — agent-cli prompts need purpose framing.** A bare "return this JSON" prompt to the
+`claude` agent-cli backend is *refused* (it's a guardrailed agent, not a JSON endpoint, and won't emit
+canned tokens without knowing what they gate). Fixed by prepending a context PREAMBLE to every pass
+("you are a component of bskill, values are pre-redacted, return only the JSON") — the agent then
+cooperates. This is load-bearing for the agent-cli backend, captured in `distill/passes.ts`.
 
 **Gate (= M2 milestone gate):**
 - Evals pass on all 5–10 golden recordings.
