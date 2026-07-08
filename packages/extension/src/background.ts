@@ -4,7 +4,9 @@
  * Broadcasts recording state to tabs so content scripts capture only while
  * active, and hands the finished recording to a download on stop.
  */
+import { NetworkCapturer } from "@skillwright/shared";
 import { RecordingSession } from "./session";
+import { chromeDebuggerCdp, type ChromeDebuggerLike } from "./debugger-cdp";
 import { connectRelay } from "./relay-client";
 import type {
   PanelMessage,
@@ -17,6 +19,46 @@ import type {
 
 const session = new RecordingSession();
 let relaySocket: WebSocket | undefined;
+
+// Capture v2: a passive network observer attached to the recorded tab, so the
+// distiller gets network-truth effect evidence. Best-effort — recording works
+// without it if attaching the debugger fails.
+let netCapturer: NetworkCapturer | undefined;
+let debuggeeTabId: number | undefined;
+
+async function startNetworkCapture(): Promise<void> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id == null || !chrome.debugger) return;
+    await chrome.debugger.attach({ tabId: tab.id }, "1.3");
+    debuggeeTabId = tab.id;
+    const cdp = chromeDebuggerCdp(chrome.debugger as unknown as ChromeDebuggerLike, tab.id);
+    netCapturer = new NetworkCapturer();
+    await netCapturer.attach(cdp);
+  } catch {
+    netCapturer = undefined;
+    debuggeeTabId = undefined;
+  }
+}
+
+/** Drain observed requests into the session (while still recording) so stop()
+ * can correlate them to steps. */
+function drainNetworkCapture(): void {
+  if (netCapturer) for (const r of netCapturer.collected()) session.recordRequest(r);
+}
+
+async function stopNetworkCapture(): Promise<void> {
+  netCapturer = undefined;
+  const tabId = debuggeeTabId;
+  debuggeeTabId = undefined;
+  if (tabId != null && chrome.debugger) {
+    try {
+      await chrome.debugger.detach({ tabId });
+    } catch {
+      /* already detached */
+    }
+  }
+}
 
 function relayStatus(status: string): void {
   const msg: RelayStatusMessage = { kind: "relaystatus", status };
@@ -70,12 +112,15 @@ chrome.runtime.onMessage.addListener(
     switch (msg.kind) {
       case "start":
         session.start(msg.title);
+        void startNetworkCapture();
         broadcastRecState(true);
         pushStatus();
         break;
       case "stop":
         if (session.isRecording) {
+          drainNetworkCapture();
           const rec = session.stop();
+          void stopNetworkCapture();
           broadcastRecState(false);
           saveRecording(rec, rec.title);
           pushStatus();

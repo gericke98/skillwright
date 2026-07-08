@@ -19,12 +19,15 @@ function accessibleName(el: Element): string | undefined {
  * the redacted field value. This is the pure heart of capture; the content
  * script's event listeners are a thin shell that calls it.
  */
-export function buildCaptureStep(el: Element, action: string): Step {
+export function buildCaptureStep(el: Element, action: string, now: () => number = () => Date.now()): Step {
   const label = accessibleName(el);
   const step: Step = {
     type: action,
     selectors: computeSelectorStack(el).map((s) => [s]),
     effect: classifyStepEffect({ action, label }),
+    // Wall-clock timestamp so the passive network observer's requests can be
+    // correlated back to the step that fired them (Capture v2).
+    timestamp: now(),
   };
 
   if (VALUE_ACTIONS.has(action) && "value" in el) {

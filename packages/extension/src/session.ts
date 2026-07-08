@@ -1,4 +1,4 @@
-import type { Recording, Step } from "@skillwright/shared";
+import { correlateRequests, type CapturedRequest, type Recording, type Step } from "@skillwright/shared";
 import { redactUrl } from "./redact";
 import { coalesceSteps } from "./coalesce";
 
@@ -26,6 +26,7 @@ export class RecordingSession {
   private active = false;
   private title = "";
   private steps: Step[] = [];
+  private network: CapturedRequest[] = [];
   private segmentId = "";
   private recordedAt = "";
 
@@ -43,6 +44,7 @@ export class RecordingSession {
     this.active = true;
     this.title = title;
     this.steps = [];
+    this.network = [];
     this.segmentId = this.deps.newId();
     this.recordedAt = this.deps.now();
   }
@@ -52,6 +54,12 @@ export class RecordingSession {
     this.steps.push(step);
   }
 
+  /** Record a network request observed by the passive CDP observer (Capture v2).
+   * Ignored unless recording is active. Correlated to steps on stop. */
+  recordRequest(request: CapturedRequest): void {
+    if (this.active) this.network.push(request);
+  }
+
   addNavigation(url: string): void {
     this.addStep({ type: "navigate", effect: "readonly", url: redactUrl(url) });
   }
@@ -59,9 +67,22 @@ export class RecordingSession {
   stop(): Recording {
     if (!this.active) throw new Error("cannot stop a recording that was never started");
     this.active = false;
+    let steps = coalesceSteps(this.steps);
+    // Attribute observed network requests to the steps that triggered them, so
+    // the distiller has network-truth effect evidence. Steps that fired nothing
+    // are left clean (no empty `requests` array).
+    if (this.network.length > 0) {
+      steps = correlateRequests(steps, this.network).map((s) => {
+        if (s.requests && s.requests.length === 0) {
+          const { requests: _drop, ...rest } = s;
+          return rest;
+        }
+        return s;
+      });
+    }
     return {
       title: this.title,
-      steps: coalesceSteps(this.steps),
+      steps,
       "x-skillwright": {
         version: 1,
         segment: { id: this.segmentId, parentSkill: null, recordedAt: this.recordedAt },
