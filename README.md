@@ -87,7 +87,7 @@ that actually matter:
 | Reliability | brittle (breaks on any UI change) | non-deterministic every run | **deterministic script + self-heal fallback** |
 | Understands intent | no | yes (but re-derives it every time) | **once, then frozen into a reusable skill** |
 | Runs on your real session | usually a fresh automation profile | varies | **your authenticated Chrome, via a CDP relay** |
-| Safe on destructive actions | no notion of it | hope for the best | **effect-tagged gate; confirms before delete/pay/send** |
+| Safe on destructive actions | no notion of it | hope for the best | **effect from HTTP method + label; confirms before delete/pay/send** |
 | Portable across agents | no | tied to one framework | **a standard Agent Skill — runs in Claude Code, Codex, …** |
 | Secrets | captured verbatim | in-context | **redacted before they touch disk** |
 
@@ -103,6 +103,11 @@ that actually matter:
  └─────────┘      └──────────────────┘     └──────────────────────────┘      after proof
 ```
 
+- **Captures network truth, not just clicks.** A passive CDP observer records the
+  real HTTP calls behind each action. The method (`GET`/`POST`/`DELETE`) is a
+  *non-LLM* safety signal — a `DELETE` firing is hard proof a step is destructive —
+  and the request URL/body corroborate which values are real parameters. DOM
+  gestures give intent; the network gives ground truth.
 - **A ladder of determinism.** Replay tries the fast, zero-LLM path first, falls
   down a stack of fallback selectors, and only escalates to an LLM to complete a
   step when the page has genuinely changed.
