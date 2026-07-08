@@ -21,6 +21,13 @@ function idSelector(el: Element): string | undefined {
   return undefined;
 }
 
+/** Stable attribute anchors for form fields that have no text/aria — a `name`
+ * or a `placeholder` is far more durable than a positional CSS path. */
+function attrSelector(el: Element, attr: string): string | undefined {
+  const v = el.getAttribute(attr)?.trim();
+  return v ? `[${attr}="${v}"]` : undefined;
+}
+
 function nthOfType(el: Element): number {
   let n = 1;
   let sib = el.previousElementSibling;
@@ -60,6 +67,10 @@ export function computeSelectorStack(el: Element): string[] {
     if (v) push(`[${attr}="${v}"]`);
   }
   push(idSelector(el));
+  // Form-field anchors: name (most durable) then placeholder — for inputs that
+  // have no text/aria of their own.
+  push(attrSelector(el, "name"));
+  push(attrSelector(el, "placeholder"));
   // Visible text ranks ABOVE the positional CSS path: text survives layout
   // changes, a deep nth-of-type path is the most brittle (last resort).
   push(textSelector(el));

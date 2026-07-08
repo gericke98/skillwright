@@ -29,4 +29,21 @@ describe("computeSelectorStack — stable text ranks above positional CSS", () =
     const stack = computeSelectorStack(document.querySelector("button")!);
     expect(stack[0]).toBe("#go");
   });
+
+  // Found dogfooding a real SPA: an input identified only by its placeholder
+  // (inputs have no textContent) was getting a brittle positional path.
+  test("an input with only a placeholder gets a stable [placeholder=...] anchor", () => {
+    document.body.innerHTML = `<div><header><input placeholder="What needs to be done?"></header></div>`;
+    const stack = computeSelectorStack(document.querySelector("input")!);
+    expect(stack[0]).toBe('[placeholder="What needs to be done?"]');
+  });
+
+  test("a form field's name is a stable anchor, ranked above placeholder", () => {
+    document.body.innerHTML = `<input name="email" placeholder="you@site.com" type="text">`;
+    const stack = computeSelectorStack(document.querySelector("input")!);
+    const nameIdx = stack.indexOf('[name="email"]');
+    const phIdx = stack.indexOf('[placeholder="you@site.com"]');
+    expect(nameIdx).toBeGreaterThanOrEqual(0);
+    expect(nameIdx).toBeLessThan(phIdx);
+  });
 });
