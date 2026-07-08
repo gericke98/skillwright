@@ -10,9 +10,10 @@ the whole distill+run pipeline (M1–M3).
 
 **Method:** test-first (TDD), phase-gated.
 
-**Status:** P0 ✅ · P1 ✅ (package renamed `bskill`; esbuild split-bundle → `bundle/` inlines
-@bskill/shared, keeps playwright/ws external and lazily-loaded; shipped bin runs `distill`/`list`
-standalone from the packed tarball with zero deps installed) · P2 ⏳ next · P3 ⏳.
+**Status:** P0 ✅ · P1 ✅ · P2 ✅ (CI + tag-driven release workflows authored & YAML-valid; extension
+builds + zips locally; root README documents install + the unpacked-extension limitation; two-party
+relay token auth already timing-safe from M1) — **actual npm publish + Release creation await a remote**
+· P3 ⏳ next.
 
 ---
 
