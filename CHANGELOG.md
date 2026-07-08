@@ -22,7 +22,9 @@ The full v1 pipeline is built and green; not yet published to npm.
   when a selector stack goes stale; a replay safety gate (effect-tagged,
   confirmation-required destructive steps, double-send guard); healed selectors
   are quarantined and promoted to canonical only after repeated clean
-  confirmations (`skillwright promote`).
+  confirmations (`skillwright promote`). Heal now works over the **relay
+  transport** too (an ARIA snapshot channel), not just the cdp path — so a skill
+  self-heals against the user's real authenticated Chrome.
 - **Install + distribution (M4).** `skillwright install` / `list` / `sync`
   symlink skills into `.claude/skills/` and `.agents/skills/`; publishable npm
   package; CI + tag-driven release workflows; verified executable in script mode

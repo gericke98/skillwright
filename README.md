@@ -182,7 +182,8 @@ live LLM, real Chromium, and a real non-Anthropic agent). Honest gaps on the way
 to 1.0:
 
 - [ ] Publish to npm + Chrome Web Store submission
-- [ ] Tier-3 heal over the relay transport (needs an extension snapshot channel)
+- [x] Live network-truth capture (passive CDP observer) + API-replay mode
+- [x] Tier-3 heal over the relay transport (extension ARIA snapshot channel)
 - [ ] Copy-mode install divergence handling on Windows / restricted filesystems
 - [ ] Broaden the eval fixture corpus toward real-world sites
 

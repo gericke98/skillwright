@@ -72,7 +72,7 @@ export class WsRelayServer {
         const resolver = this.pending.get(msg.id);
         if (resolver) {
           this.pending.delete(msg.id);
-          resolver({ ok: msg.ok, error: msg.error });
+          resolver({ ok: msg.ok, error: msg.error, url: msg.url, aria: msg.aria });
         }
       }
     });

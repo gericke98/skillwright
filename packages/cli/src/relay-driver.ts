@@ -1,4 +1,4 @@
-import type { ReplayStep, StepDriver } from "./replay";
+import type { PageSnapshot, ReplayStep, StepDriver } from "./replay";
 
 export interface PerformRequest {
   action: string;
@@ -9,6 +9,9 @@ export interface PerformRequest {
 export interface PerformResult {
   ok: boolean;
   error?: string;
+  /** For a "snapshot" request: the live page view (heal over the relay). */
+  url?: string;
+  aria?: string;
 }
 
 /** Abstracts sending one perform command and awaiting its result. The WS relay
@@ -33,5 +36,12 @@ export class RelayStepDriver implements StepDriver {
     } catch {
       return "fail";
     }
+  }
+
+  /** Ask the extension for the live page view so tier-3 heal works over the relay
+   * (against the user's real authenticated Chrome), not just the cdp path. */
+  async snapshot(): Promise<PageSnapshot> {
+    const res = await this.transport.send({ action: "snapshot", selector: "" });
+    return { url: res.url ?? "", aria: res.aria ?? "" };
   }
 }

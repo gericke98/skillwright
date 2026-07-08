@@ -33,6 +33,9 @@ export interface ResultMessage {
   id: number;
   ok: boolean;
   error?: string;
+  /** For a "snapshot" perform: the live page view (heal over the relay). */
+  url?: string;
+  aria?: string;
 }
 
 export type FromExtension = PairMessage | ResultMessage;

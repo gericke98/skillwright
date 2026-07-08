@@ -51,6 +51,21 @@ function fillExpression(selector: string, value: string): string {
   })()`;
 }
 
+/** Expression: a compact ARIA-ish snapshot of interactive elements + the URL,
+ * for the tier-3 healer to find a fresh selector (heal over the relay). */
+function snapshotExpression(): string {
+  return `(() => {
+    const els = Array.from(document.querySelectorAll('button, a, input, select, textarea, [role], [aria-label]'));
+    const lines = [];
+    for (const el of els.slice(0, 300)) {
+      const role = el.getAttribute('role') || el.tagName.toLowerCase();
+      const name = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('placeholder') || '').trim().slice(0, 80);
+      if (name) lines.push(role + ' "' + name + '"');
+    }
+    return JSON.stringify({ url: location.href, aria: lines.join('\\n') });
+  })()`;
+}
+
 async function evaluate(tabId: number, expression: string): Promise<unknown> {
   const res = (await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
     expression,
@@ -65,8 +80,20 @@ interface PerformInput {
   value?: string;
 }
 
-async function performStep(tabId: number, cmd: PerformInput): Promise<{ ok: boolean; error?: string }> {
+async function performStep(
+  tabId: number,
+  cmd: PerformInput,
+): Promise<{ ok: boolean; error?: string; url?: string; aria?: string }> {
   try {
+    if (cmd.action === "snapshot") {
+      const raw = await evaluate(tabId, snapshotExpression());
+      try {
+        const s = JSON.parse(String(raw)) as { url?: string; aria?: string };
+        return { ok: true, url: s.url ?? "", aria: s.aria ?? "" };
+      } catch {
+        return { ok: true, url: "", aria: "" };
+      }
+    }
     if (cmd.action === "click") {
       const info = (await evaluate(tabId, coordsExpression(cmd.selector))) as {
         found: boolean;
@@ -139,7 +166,16 @@ export async function connectRelay(
       if (!msg.ok) ws.close();
     } else if (msg.kind === "perform") {
       const res = await performStep(tabId, msg as PerformInput);
-      ws.send(JSON.stringify({ kind: "result", id: msg.id, ok: res.ok, error: res.error }));
+      ws.send(
+        JSON.stringify({
+          kind: "result",
+          id: msg.id,
+          ok: res.ok,
+          error: res.error,
+          url: res.url,
+          aria: res.aria,
+        }),
+      );
     }
   });
 
