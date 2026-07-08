@@ -2,13 +2,14 @@
   "name": "skillwright-monorepo",
   "version": "0.0.0",
   "private": true,
-  "description": "Browser Skill Learner — capture a browser task once, replay it as a portable Agent Skill",
+  "description": "skillwright — capture a browser task once, replay it as a portable Agent Skill",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "tsx packages/evals/src/run-evals.ts",
+    "demo": "tsx packages/integration/demo-replay-heal.mjs",
     "typecheck": "tsc --build",
     "build": "pnpm -r build"
   },

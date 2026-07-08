@@ -28,6 +28,53 @@ When the site changes and a selector breaks, `skillwright` **heals the step
 itself** and keeps going — then earns the fix into the skill only after it's
 proven across runs.
 
+<div align="center">
+
+![skillwright replaying a skill and self-healing a broken selector](docs/assets/replay-heal.gif)
+
+<sub>A distilled skill replaying against a live app — the recorded selector is
+stale, so skillwright heals the step from the live page and completes the delete.
+Reproduce it: <code>pnpm demo</code>.</sub>
+
+</div>
+
+## What you get — a portable, readable skill
+
+`distill` produces a standard [Agent Skill](https://agentskills.io) directory.
+The `SKILL.md` is human-readable, typed, and effect-tagged — an agent can run it
+as a script *or* follow it as instructions:
+
+```markdown
+---
+name: approve-invoice
+description: Approves a pending invoice in Acme Billing by invoice number. Use
+  when asked to approve, release, or sign off an invoice.
+compatibility: Requires Node 20+, a Chrome CDP endpoint (skillwright relay), and
+  an authenticated session in that browser.
+metadata:
+  version: "1.0"
+  skillwright-inputs: '[{"name":"invoice_number","type":"string","required":true}]'
+---
+
+# Approve an invoice
+
+## Inputs
+- `{invoice_number}` (string, required)
+
+## Steps
+1. [readonly]    Open the invoices list.
+2. [mutating]    Enter {invoice_number} into the "Search invoices" field.
+3. [destructive] Click "Approve invoice {invoice_number}" to release it.
+```
+
+```
+approve-invoice/
+├── SKILL.md              # the above — instructions + typed inputs + effect tags
+├── scripts/replay.ts     # deterministic Playwright-over-CDP replay
+├── references/walkthrough.md   # full step narrative + selector stacks
+└── assets/recording.json # immutable, redacted evidence
+```
+
 ## Why not just record-and-replay?
 
 Classic recorders (Selenium IDE, Playwright codegen, RPA tools) freeze your
