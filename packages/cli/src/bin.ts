@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { MultiSegmentError, type Recording } from "@bskill/shared";
 import { distill } from "./distill";
 import { writeSkillDirectory } from "./write-skill";
 import { defaultLibraryDir } from "./paths";
+import { promote } from "./quarantine";
 
 function fail(msg: string): never {
   process.stderr.write(`bskill: ${msg}\n`);
@@ -95,6 +97,21 @@ async function cmdRun(argv: string[]): Promise<void> {
   return reportResult(slug!, result);
 }
 
+function cmdPromote(argv: string[]): void {
+  const slug = argv.find((a) => !a.startsWith("--"));
+  if (!slug) fail("usage: bskill promote <skill> [--force]");
+  const force = argv.includes("--force");
+  const dir = join(defaultLibraryDir(), slug!);
+  const result = promote(dir, { force });
+  if (result.promoted === 0) {
+    process.stdout.write(
+      `No candidates promoted for "${slug}" (need clean confirmations, or pass --force).\n`,
+    );
+  } else {
+    process.stdout.write(`Promoted ${result.promoted} healed selector(s) for "${slug}".\n`);
+  }
+}
+
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
@@ -102,8 +119,10 @@ async function main(): Promise<void> {
       return await cmdDistill(rest);
     case "run":
       return cmdRun(rest);
+    case "promote":
+      return cmdPromote(rest);
     default:
-      fail(`unknown command "${cmd ?? ""}". commands: distill, run`);
+      fail(`unknown command "${cmd ?? ""}". commands: distill, run, promote`);
   }
 }
 

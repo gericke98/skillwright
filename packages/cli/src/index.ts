@@ -20,10 +20,24 @@ export {
   runSkill,
   type ReplayStep,
   type StepDriver,
+  type StepOutcome,
+  type PageSnapshot,
+  type HealFn,
   type FailureReport,
   type ReplayResult,
   type RunOptions,
 } from "./replay";
+export { createLlmHealer } from "./heal";
+export {
+  recordHeal,
+  loadCandidates,
+  confirmClean,
+  readyForPromotion,
+  promote,
+  PROMOTE_THRESHOLD,
+  type Candidate,
+  type PromotionResult,
+} from "./quarantine";
 export { translateSelector, type LocatorDescriptor } from "./translate-selector";
 export { PlaywrightStepDriver } from "./playwright-driver";
 export { toReplaySteps } from "./to-replay-steps";

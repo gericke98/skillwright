@@ -6,6 +6,7 @@ import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, RelayStepDriver, type ReplayResult } from "./index";
 import { mintToken } from "./token";
 import { WsRelayServer } from "./relay-server";
+import { applyPromotedOverlay, buildHealer, confirmCleanRun, makeOnHeal } from "./heal-wiring";
 
 export interface RelayRunOptions {
   confirmDestructive: boolean;
@@ -36,6 +37,7 @@ export async function runSkillViaRelay(slug: string, opts: RelayRunOptions): Pro
     readFileSync(join(dir, "assets", "recording.json"), "utf8"),
   ) as Recording;
   const steps = toReplaySteps(recording);
+  applyPromotedOverlay(steps, dir);
 
   const token = mintToken();
   const relay = new WsRelayServer({ token, port: opts.port ?? 9333 });
@@ -50,9 +52,13 @@ export async function runSkillViaRelay(slug: string, opts: RelayRunOptions): Pro
       timeoutMs,
       "the bskill extension did not connect — open the side panel and click Connect",
     );
-    return await runSkill(steps, new RelayStepDriver(relay.transport), {
+    const result = await runSkill(steps, new RelayStepDriver(relay.transport), {
       confirmDestructive: opts.confirmDestructive,
+      heal: buildHealer(),
+      onHeal: makeOnHeal(dir),
     });
+    if (result.status === "ok") confirmCleanRun(dir);
+    return result;
   } finally {
     await relay.close();
   }
