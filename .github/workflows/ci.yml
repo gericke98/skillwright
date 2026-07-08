@@ -28,8 +28,12 @@ jobs:
       - name: Install Chromium
         run: pnpm --filter skillwright exec playwright install --with-deps chromium
 
+      # Run under a virtual display (xvfb) so the headed MV3-extension e2e test
+      # actually runs in CI instead of skipping. `playwright install --with-deps`
+      # provides xvfb; headless tests ignore DISPLAY. If xvfb/SW registration
+      # fails, that test skips gracefully (guarded) rather than reddening CI.
       - name: Test (unit + integration + conformance)
-        run: pnpm test
+        run: xvfb-run -a pnpm test
 
       # LLM distiller evals are NOT run here — they cost tokens and run
       # on-demand / on prompt-change only (see packages/evals, §13).
