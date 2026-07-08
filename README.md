@@ -121,10 +121,15 @@ that actually matter:
 
 ## Install
 
-**CLI** (published to npm with provenance):
+**CLI** — two ways:
 
 ```bash
-npm i -g skillwright        # or: npx skillwright <command>
+# From the GitHub Release (works today — no npm account needed):
+# download the skillwright-*.tgz asset from the latest Release, then:
+npm i -g ./skillwright-*.tgz          # or: npm i -g <tarball-url>
+
+# From npm (once published with provenance):
+npm i -g skillwright                  # or: npx skillwright <command>
 ```
 
 **Extension** (v1 ships as an unpacked developer-mode load):

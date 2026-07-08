@@ -17,6 +17,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the relay path (that times out in the extension) — a note is printed if
   combined with `--relay`. Async-enabled inputs on real sites were validated to
   already work via Playwright's auto-wait (`dogfood-dynamic.mjs`).
+- **Installable CLI tarball on every Release.** The release workflow now packs
+  the CLI (`pnpm pack`) and attaches `skillwright-*.tgz` alongside the extension
+  zip, so the CLI is installable straight from the GitHub Release
+  (`npm i -g ./skillwright-*.tgz` or `npm i -g <tarball-url>`) even before npm
+  publish is enabled — no npm account or `NPM_TOKEN` required. Validated the full
+  `pack → global install → run` flow locally: the shipped bin runs, and exit
+  codes are correct for agent script-mode (0 ok, 1 usage/needs-confirmation,
+  2 replay-failed).
 
 ## [0.1.0] - 2026-07-08
 

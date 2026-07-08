@@ -48,6 +48,14 @@ jobs:
         if: env.HAS_NPM_TOKEN != 'true'
         run: echo "::notice::NPM_TOKEN not set — skipped npm publish. Add the secret and re-tag to publish the CLI."
 
+      # Pack the CLI as an installable tarball for the GitHub Release, so the CLI
+      # is installable straight from the Release even before npm publish is
+      # enabled (`npm i -g <tarball-url>`). `prepack` builds the bundle.
+      - name: Pack CLI tarball
+        run: |
+          cd packages/cli
+          pnpm pack --pack-destination "$GITHUB_WORKSPACE"
+
       # Build + zip the unpacked extension for the GitHub Release.
       - name: Build extension
         run: pnpm --filter @skillwright/extension build:crx
@@ -57,14 +65,21 @@ jobs:
           cd packages/extension/dist-extension
           zip -r "$GITHUB_WORKSPACE/skillwright-extension.zip" .
 
-      - name: Attach extension to the Release
+      - name: Attach artifacts to the Release
         uses: softprops/action-gh-release@v2
         with:
-          files: skillwright-extension.zip
+          files: |
+            skillwright-*.tgz
+            skillwright-extension.zip
           body: |
             skillwright ${{ github.ref_name }}
 
-            - CLI: `npm i -g skillwright` (once published to npm with provenance).
-            - Extension: download `skillwright-extension.zip`, unzip, and load unpacked
-              via chrome://extensions (Developer mode). See the README for the
-              known unpacked-extension limitation on managed profiles.
+            **CLI** — install either way:
+            - From npm (once published with provenance): `npm i -g skillwright`
+            - From this Release, no npm needed: download the `skillwright-*.tgz`
+              asset below and run `npm i -g ./skillwright-*.tgz`, or install directly
+              with `npm i -g <tarball-url>`.
+
+            **Extension** — download `skillwright-extension.zip`, unzip, and load
+            unpacked via chrome://extensions (Developer mode). See the README for the
+            known unpacked-extension limitation on managed profiles.
