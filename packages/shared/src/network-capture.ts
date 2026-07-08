@@ -1,15 +1,16 @@
-import { redactUrl } from "./redact";
+import { redactUrl, scrubSecrets } from "./redact";
 import type { CapturedRequest } from "./schema";
 
 /** The subset of a CDP `Network.requestWillBeSent` event we consume. */
 export interface CdpRequestEvent {
-  request: { method: string; url: string };
+  request: { method: string; url: string; postData?: string };
   /** CDP resource type, e.g. "XHR", "Fetch", "Document". */
   type?: string;
 }
 
 /** Convert a CDP request event into a redacted CapturedRequest stamped with a
- * capture-time (wall-clock) timestamp for later correlation to a step. */
+ * capture-time (wall-clock) timestamp for later correlation to a step. URL and
+ * body are scrubbed of secrets before they land in the recording. */
 export function cdpRequestToCaptured(ev: CdpRequestEvent, timestamp: number): CapturedRequest {
   const out: CapturedRequest = {
     method: ev.request.method,
@@ -17,6 +18,9 @@ export function cdpRequestToCaptured(ev: CdpRequestEvent, timestamp: number): Ca
     timestamp,
   };
   if (ev.type) out.resourceType = ev.type;
+  if (typeof ev.request.postData === "string" && ev.request.postData !== "") {
+    out.body = scrubSecrets(ev.request.postData);
+  }
   return out;
 }
 

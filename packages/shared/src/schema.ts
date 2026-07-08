@@ -28,6 +28,8 @@ export interface CapturedRequest {
   method: string;
   /** Redacted request URL. */
   url: string;
+  /** Redacted request body (form/JSON payload), when present. */
+  body?: string;
   /** Response status, if observed. */
   status?: number;
   /** CDP resource type, e.g. "XHR", "Fetch", "Document". */

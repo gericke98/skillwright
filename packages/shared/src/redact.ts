@@ -107,6 +107,14 @@ export interface FieldMeta {
   type?: string;
 }
 
+/**
+ * Scrub secret-shaped tokens anywhere in a free-text blob (e.g. a request body),
+ * token-wise so JSON/form structure survives. Over-redaction is the accepted bias.
+ */
+export function scrubSecrets(text: string): string {
+  return text.replace(/[^\s"'`]+/g, (token) => (valueLooksSecret(token) ? PLACEHOLDER : token));
+}
+
 /** Redact a single captured field value. */
 export function redactValue(value: string, meta: FieldMeta = {}): string {
   if (meta.type === "password") return PLACEHOLDER;

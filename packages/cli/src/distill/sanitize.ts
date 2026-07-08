@@ -15,8 +15,8 @@ export interface StepSummary {
   value?: string;
   url?: string;
   /** The network calls this step fired (Capture v2) — HTTP-method + redacted URL
-   * ground truth the distiller uses for effect and parameterization. */
-  requests?: Array<{ method: string; url: string }>;
+   * (+ redacted body) ground truth the distiller uses for effect and parameterization. */
+  requests?: Array<{ method: string; url: string; body?: string }>;
 }
 
 /**
@@ -33,7 +33,14 @@ export function summarizeSteps(recording: Recording): StepSummary[] {
     if (typeof step.value === "string") summary.value = redactValue(step.value);
     if (typeof step.url === "string") summary.url = redactUrl(step.url);
     if (step.requests && step.requests.length > 0) {
-      summary.requests = step.requests.map((r) => ({ method: r.method, url: redactUrl(r.url) }));
+      summary.requests = step.requests.map((r) => {
+        const req: { method: string; url: string; body?: string } = {
+          method: r.method,
+          url: redactUrl(r.url),
+        };
+        if (typeof r.body === "string") req.body = r.body;
+        return req;
+      });
     }
     return summary;
   });

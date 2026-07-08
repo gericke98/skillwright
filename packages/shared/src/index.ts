@@ -21,6 +21,7 @@ export { assertSingleSegment, MultiSegmentError } from "./segment";
 export {
   redactValue,
   redactUrl,
+  scrubSecrets,
   valueLooksSecret,
   PLACEHOLDER,
   type FieldMeta,
