@@ -96,6 +96,77 @@ describe("parameterize", () => {
   });
 });
 
+/**
+ * Reviewer counter-example: 3 PLACEHOLDER-valued steps (password, recovery
+ * code, api key). The proposer claims ONLY the middle one. The old
+ * count/position heuristic (`slice(-surplus)` off the END of placeholder
+ * order) would compute claimedCount=1, surplus=2, and take the LAST 2
+ * placeholder steps (recovery code + api key) — silently dropping the FIRST
+ * one (password) with no parameter at all, even though its recording step
+ * still holds the literal PLACEHOLDER value.
+ */
+const recordingThreeSecrets: Recording = {
+  title: "Sign in with recovery code and api key",
+  steps: [
+    { type: "change", selectors: [["aria/Password"]], value: PLACEHOLDER, timestamp: 1 },
+    { type: "change", selectors: [["aria/Recovery Code"]], value: PLACEHOLDER, timestamp: 2 },
+    { type: "change", selectors: [["aria/Api Key"]], value: PLACEHOLDER, timestamp: 3 },
+    { type: "click", selectors: [["aria/Submit"]], timestamp: 4 },
+  ],
+  "x-skillwright": {
+    version: 1,
+    segment: { id: "s2", parentSkill: null, recordedAt: "2026-01-01T00:00:00.000Z" },
+  },
+};
+
+/** Proposer claims ONLY the middle placeholder step (index 1, recovery code). */
+const proposalClaimsOnlyMiddle = {
+  params: [{ name: "recovery_code", type: "string", required: true, demoValue: PLACEHOLDER }],
+};
+
+const critiqueNoChanges = { removals: [], additions: [], typeFixes: [] };
+
+function fakeBackendThreeSecrets(): { backend: LlmBackend; callCount: () => number } {
+  let calls = 0;
+  const backend: LlmBackend = {
+    name: "fake-three-secrets",
+    async complete<T>(_prompt: string, _schema: SchemaSpec<T>): Promise<T> {
+      calls += 1;
+      if (calls === 1) return proposalClaimsOnlyMiddle as unknown as T;
+      if (calls === 2) return critiqueNoChanges as unknown as T;
+      throw new Error(`unexpected 3rd backend call: ${_prompt}`);
+    },
+  };
+  return { backend, callCount: () => calls };
+}
+
+describe("parameterize — reviewer counter-example (non-last missed secret)", () => {
+  test("never drops the FIRST secret when the proposer misses a non-last placeholder step", async () => {
+    const { backend } = fakeBackendThreeSecrets();
+    const result = await parameterize(recordingThreeSecrets, backend);
+
+    const password = result.find((p) => p.name === "password");
+    expect(password).toBeTruthy();
+    expect(password?.required).toBe(true);
+    expect(password?.type).toBe("string");
+    expect(password?.demoValue).toBe("");
+    expect(password?.confidence).toBe("high");
+  });
+
+  test("no secret param anywhere carries a non-empty demoValue", async () => {
+    const { backend } = fakeBackendThreeSecrets();
+    const result = await parameterize(recordingThreeSecrets, backend);
+
+    const expectedSecretNames = secretNamesOf(recordingThreeSecrets, proposalClaimsOnlyMiddle.params);
+    expect(expectedSecretNames.size).toBeGreaterThan(0);
+    for (const name of expectedSecretNames) {
+      const param = result.find((p) => p.name === name);
+      expect(param).toBeTruthy();
+      expect(param?.demoValue).toBe("");
+    }
+  });
+});
+
 describe("secretNamesOf", () => {
   test("includes proposal-claimed secrets by name", () => {
     const names = secretNamesOf(recording, proposalPayload.params);
@@ -114,6 +185,16 @@ describe("secretNamesOf", () => {
     ];
     const names = secretNamesOf(recording, proposalClaimsBoth);
     expect(names).toEqual(new Set(["password", "recovery_code"]));
+  });
+
+  test("unions synthesized names for ALL placeholder steps when proposer misses a non-last one (reviewer counter-example)", () => {
+    const names = secretNamesOf(recordingThreeSecrets, proposalClaimsOnlyMiddle.params);
+    // The proposer's own claimed name for the middle step is preserved...
+    expect(names.has("recovery_code")).toBe(true);
+    // ...and BOTH unclaimed steps are covered, including the FIRST one (the
+    // one the old last-N heuristic dropped), not just the last one.
+    expect(names.has("password")).toBe(true);
+    expect(names.has("api-key")).toBe(true);
   });
 
   test("falls back to secret_<index> when a missed step has no usable label", () => {

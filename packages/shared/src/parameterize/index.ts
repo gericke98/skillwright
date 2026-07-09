@@ -31,13 +31,35 @@ function synthesizeSecretName(step: Step, index: number): string {
  *     real value — redaction runs before any LLM call) and named it.
  *  2. Missed secrets — a captured step whose `value` is the placeholder
  *     that NO proposal param claims (the proposer dropped a password/secret
- *     entirely). We can't know which specific claimed param corresponds to
- *     which step, so we use a count-based surplus rule: if there are more
- *     PLACEHOLDER-valued steps than PLACEHOLDER-valued proposal params, the
- *     excess (taken from the END of step order, since a recording's later
- *     secret fields are the ones most likely to be overlooked) get a
- *     synthesized name so `reconcileParams`'s secret floor force-adds them
- *     as required params even though no pass ever named them.
+ *     entirely).
+ *
+ * On (2): `ParamDef` carries no step back-reference, so which claimed param
+ * (if any) corresponds to which placeholder step is NOT derivable — there is
+ * no way to correlate them exactly. We used to guess positionally (assume the
+ * proposer's claims are a prefix of step order, and take the trailing
+ * surplus), but that guess is only correct when the missed step is last.
+ * Counter-example: steps in order password / recovery-code / api-key, all
+ * PLACEHOLDER, and the proposer claims ONLY the middle one (recovery-code).
+ * The old rule computed claimedCount=1, surplus=2, and took the LAST 2
+ * placeholder steps (recovery-code + api-key) — silently dropping password
+ * with NO parameter at all, even though the recording step still holds the
+ * literal PLACEHOLDER value (replay would type it into a live password
+ * field).
+ *
+ * Fix: don't guess which steps were missed. If we only know (from the count)
+ * that AT LEAST ONE step was missed — `placeholderSteps.length >
+ * claimed.size` — synthesize a name for EVERY placeholder step and union all
+ * of them in. This may occasionally produce a duplicate/benign extra param
+ * when a synthesized name differs from the name the proposer chose for the
+ * same field (e.g. proposer said `recovery_code`, the label slugifies to
+ * `recovery-code-field`) — an extra required input the user has to fill in.
+ * That's an acceptable UX cost; the alternative (guessing wrong) silently
+ * drops a real secret, which is not acceptable. If every placeholder step is
+ * already claimed, nothing is synthesized.
+ *
+ * Follow-up (not implemented here): add a step-index back-reference to
+ * `ParamDef` so proposed params can be correlated to their originating step
+ * exactly, eliminating the need for this union entirely.
  */
 export function secretNamesOf(recording: Recording, proposal: ParamDef[]): Set<string> {
   const secretNames = new Set<string>();
@@ -53,11 +75,9 @@ export function secretNamesOf(recording: Recording, proposal: ParamDef[]): Set<s
   });
 
   const claimedCount = proposal.filter((p) => p.demoValue === PLACEHOLDER).length;
-  const surplus = placeholderSteps.length - claimedCount;
 
-  if (surplus > 0) {
-    const missed = placeholderSteps.slice(-surplus);
-    for (const { step, index } of missed) {
+  if (placeholderSteps.length > claimedCount) {
+    for (const { step, index } of placeholderSteps) {
       const name = synthesizeSecretName(step, index);
       if (!secretNames.has(name)) secretNames.add(name);
     }
