@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { join } from "node:path";
-import { completeWithRepair, type LlmBackend, type SchemaSpec } from "./backend";
+import { completeWithRepair, type LlmBackend, type SchemaSpec } from "@skillwright/shared";
 
 /** Ordered default candidates; first one found on PATH wins. */
 const DEFAULT_BINARIES = ["claude", "codex", "gemini"];

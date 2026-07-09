@@ -1,5 +1,10 @@
-import { EFFECT_SEVERITY, type EffectTag, type Recording } from "@skillwright/shared";
-import type { LlmBackend, SchemaSpec } from "../llm/backend";
+import {
+  EFFECT_SEVERITY,
+  type EffectTag,
+  type Recording,
+  type LlmBackend,
+  type SchemaSpec,
+} from "@skillwright/shared";
 import { summarizeSteps, type StepSummary } from "./sanitize";
 
 export interface Intent {

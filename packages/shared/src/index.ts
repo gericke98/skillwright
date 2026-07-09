@@ -26,3 +26,10 @@ export {
   PLACEHOLDER,
   type FieldMeta,
 } from "./redact";
+export { extractFirstJson } from "./llm/extract";
+export {
+  type LlmBackend,
+  type SchemaSpec,
+  SchemaExhaustedError,
+  completeWithRepair,
+} from "./llm/backend";

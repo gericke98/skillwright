@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@skillwright/shared";
+import { SchemaExhaustedError, type Recording } from "@skillwright/shared";
 import { MockBackend } from "../src/llm/mock-backend";
-import { SchemaExhaustedError } from "../src/llm/backend";
 import { distillSemantic } from "../src/distill/semantic";
 
 function rec(title: string, steps: Recording["steps"]): Recording {

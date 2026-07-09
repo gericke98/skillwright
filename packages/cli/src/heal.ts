@@ -1,4 +1,4 @@
-import { SchemaExhaustedError, type LlmBackend, type SchemaSpec } from "./llm/backend";
+import { SchemaExhaustedError, type LlmBackend, type SchemaSpec } from "@skillwright/shared";
 import type { HealFn, PageSnapshot, ReplayStep } from "./replay";
 
 const selectorSpec: SchemaSpec<{ selector: string }> = {

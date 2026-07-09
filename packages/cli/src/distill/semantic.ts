@@ -5,14 +5,15 @@ import {
   redactUrl,
   redactValue,
   roundUpEffect,
+  SchemaExhaustedError,
   type EffectTag,
+  type LlmBackend,
   type Recording,
   type Step,
 } from "@skillwright/shared";
 import { toSlug } from "../slug";
 import { stepLabel } from "../step-label";
 import { distill, type DistillOptions, type SkillDirectory } from "../distill";
-import { SchemaExhaustedError, type LlmBackend } from "../llm/backend";
 import { scrubText, sanitizeSkillDescription } from "./sanitize";
 import { inferEffects, inferIntent, inferParams, narrate, type ParamDef, type StepNarrative } from "./passes";
 

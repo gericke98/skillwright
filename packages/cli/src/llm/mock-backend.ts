@@ -1,4 +1,4 @@
-import { SchemaExhaustedError, type LlmBackend, type SchemaSpec } from "./backend";
+import { SchemaExhaustedError, type LlmBackend, type SchemaSpec } from "@skillwright/shared";
 
 /**
  * Deterministic in-memory backend for unit tests and P2 distiller plumbing.
