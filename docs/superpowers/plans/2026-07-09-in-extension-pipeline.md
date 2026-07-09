@@ -214,7 +214,7 @@ describe("reconcile", () => {
 ```
 
 - [ ] **Step 2: Run — expect FAIL.**
-- [ ] **Step 3: Implement `reconcile.ts`** — start from proposal; apply `typeFixes`; apply `removals` ONLY when the name is not in `secretNames` and a non-empty `reason` is present (attach reason to a dropped-log, not output); union `additions`; **hardened secret floor** — for EVERY `secretNames` member (present or missing) unconditionally force `required: true`, `type: "string"`, and `demoValue: ""`, so neither a `typeFix` nor a name-colliding `addition` can inject an LLM-supplied type or value onto a secret; set `rationale`/`confidence` (secret→high; critic-touched→medium; else the proposer's default→low).
+- [ ] **Step 3: Implement `reconcile.ts`** — **dedupe `proposal` by name (first occurrence wins)** — duplicate param names are invalid regardless of secrecy (ambiguous substitution + frontmatter); apply `typeFixes`; apply `removals` ONLY when the name is not in `secretNames` and a non-empty `reason` is present (attach reason to a dropped-log, not output); union `additions`; **hardened secret floor** — for EVERY occurrence of EVERY `secretNames` member (present or missing) unconditionally force `required: true`, `type: "string"`, and `demoValue: ""`, so neither a `typeFix`, a name-colliding `addition`, nor a duplicate-named proposal entry can inject an LLM-supplied type or value onto a secret; set `rationale`/`confidence` (secret→high; critic-touched→medium; else the proposer's default→low).
 - [ ] **Step 4: Run — expect PASS.**
 - [ ] **Step 5: Commit** — `git commit -am "feat(shared): deterministic param reconcile with secret floor"`.
 
