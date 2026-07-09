@@ -6,7 +6,7 @@
  */
 import { NetworkCapturer } from "@skillwright/shared";
 import { RecordingSession } from "./session";
-import { chromeDebuggerCdp, type ChromeDebuggerLike } from "./debugger-cdp";
+import { makeDebuggerLifecycle, type DebuggerLifecycleDbg } from "./debugger-lifecycle";
 import { connectRelay } from "./relay-client";
 import type {
   PanelMessage,
@@ -24,20 +24,33 @@ let relaySocket: WebSocket | undefined;
 // distiller gets network-truth effect evidence. Best-effort — recording works
 // without it if attaching the debugger fails.
 let netCapturer: NetworkCapturer | undefined;
-let debuggeeTabId: number | undefined;
+
+// Registered exactly ONCE at module scope — not per recording — so the
+// chrome.debugger onEvent/onDetach listeners never leak across start/stop
+// cycles, and so they're still wired after an MV3 service-worker restart
+// (this top-level code reruns on every wake, unlike listeners that were
+// previously registered from inside the async startNetworkCapture()). On
+// onDetach (DevTools opened on the tab, the debuggee infobar dismissed, tab
+// closed, etc.) it clears state and we push a status so the panel reflects
+// that network capture recovered rather than silently dying mid-recording.
+const debuggerLifecycle = chrome.debugger
+  ? makeDebuggerLifecycle(chrome.debugger as unknown as DebuggerLifecycleDbg, () => {
+      netCapturer = undefined;
+      pushStatus();
+    })
+  : undefined;
 
 async function startNetworkCapture(): Promise<void> {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id == null || !chrome.debugger) return;
+    if (tab?.id == null || !chrome.debugger || !debuggerLifecycle) return;
     await chrome.debugger.attach({ tabId: tab.id }, "1.3");
-    debuggeeTabId = tab.id;
-    const cdp = chromeDebuggerCdp(chrome.debugger as unknown as ChromeDebuggerLike, tab.id);
+    const cdp = debuggerLifecycle.start(tab.id);
     netCapturer = new NetworkCapturer();
     await netCapturer.attach(cdp);
   } catch {
     netCapturer = undefined;
-    debuggeeTabId = undefined;
+    debuggerLifecycle?.stop();
   }
 }
 
@@ -49,8 +62,8 @@ function drainNetworkCapture(): void {
 
 async function stopNetworkCapture(): Promise<void> {
   netCapturer = undefined;
-  const tabId = debuggeeTabId;
-  debuggeeTabId = undefined;
+  const tabId = debuggerLifecycle?.activeTabId();
+  debuggerLifecycle?.stop();
   if (tabId != null && chrome.debugger) {
     try {
       await chrome.debugger.detach({ tabId });
