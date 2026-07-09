@@ -1,12 +1,8 @@
-import {
-  assertSingleSegment,
-  classifyStepEffect,
-  deriveNetworkEffect,
-  roundUpEffect,
-  type EffectTag,
-  type Recording,
-  type Step,
-} from "@skillwright/shared";
+import { assertSingleSegment } from "./segment";
+import { classifyStepEffect } from "./classify-effect";
+import { deriveNetworkEffect } from "./network-effect";
+import { roundUpEffect } from "./effect";
+import type { EffectTag, Recording, Step } from "./schema";
 import { toSlug } from "./slug";
 import { stepLabel } from "./step-label";
 import { sanitizeSkillDescription } from "./distill/sanitize";

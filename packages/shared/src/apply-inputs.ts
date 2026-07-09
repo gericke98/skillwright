@@ -1,4 +1,4 @@
-import type { ReplayStep } from "./replay";
+import type { ReplayStep } from "./replay-step";
 
 /** Thrown when a step needs a `{placeholder}` the caller didn't supply. */
 export class MissingInputError extends Error {

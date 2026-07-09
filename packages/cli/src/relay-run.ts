@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Recording } from "@skillwright/shared";
+import { type Recording, toReplaySteps, applyInputs } from "@skillwright/shared";
 import { defaultLibraryDir } from "./paths";
-import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, RelayStepDriver, type ReplayResult } from "./index";
-import { applyInputs } from "./apply-inputs";
 import { mintToken } from "./token";
 import { WsRelayServer } from "./relay-server";
 import { applyPromotedOverlay, buildHealer, confirmCleanRun, makeOnHeal } from "./heal-wiring";

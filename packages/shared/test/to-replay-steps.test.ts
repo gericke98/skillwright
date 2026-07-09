@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@skillwright/shared";
-import { toReplaySteps } from "../src/index";
+import { type Recording, toReplaySteps } from "../src/index";
 
 function rec(steps: Recording["steps"]): Recording {
   return {

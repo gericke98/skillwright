@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@skillwright/shared";
+import type { Recording } from "../src/index";
 import { summarizeSteps, scrubText } from "../src/distill/sanitize";
 
 function rec(steps: Recording["steps"]): Recording {

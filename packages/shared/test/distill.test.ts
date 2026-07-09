@@ -1,6 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { MultiSegmentError, type Recording } from "@skillwright/shared";
-import { distill } from "../src/index";
+import { MultiSegmentError, type Recording, distill } from "../src/index";
 
 function recording(steps: Recording["steps"], parentSkill: string | null = null): Recording {
   return {

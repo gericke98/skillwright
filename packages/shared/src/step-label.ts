@@ -1,4 +1,4 @@
-import type { Step } from "@skillwright/shared";
+import type { Step } from "./schema";
 
 /**
  * Pull a human-readable label off a step's selector stack. `aria/Name` and

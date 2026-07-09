@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { sanitizeSkillDescription } from "../src/distill/sanitize";
+import { sanitizeSkillDescription } from "../src/index";
 
 describe("sanitizeSkillDescription — Agent Skills frontmatter safety", () => {
   test("collapses newlines to spaces (a raw newline breaks YAML frontmatter)", () => {

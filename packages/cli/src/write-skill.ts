@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { SkillDirectory } from "./distill";
+import type { SkillDirectory } from "@skillwright/shared";
 
 /**
  * Write a distilled skill directory under `baseDir/<slug>/`, creating nested

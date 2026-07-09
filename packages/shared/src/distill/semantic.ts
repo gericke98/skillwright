@@ -1,16 +1,10 @@
-import {
-  assertSingleSegment,
-  classifyStepEffect,
-  deriveNetworkEffect,
-  redactUrl,
-  redactValue,
-  roundUpEffect,
-  SchemaExhaustedError,
-  type EffectTag,
-  type LlmBackend,
-  type Recording,
-  type Step,
-} from "@skillwright/shared";
+import { assertSingleSegment } from "../segment";
+import { classifyStepEffect } from "../classify-effect";
+import { deriveNetworkEffect } from "../network-effect";
+import { redactUrl, redactValue } from "../redact";
+import { roundUpEffect } from "../effect";
+import { SchemaExhaustedError, type LlmBackend } from "../llm/backend";
+import type { EffectTag, Recording, Step } from "../schema";
 import { toSlug } from "../slug";
 import { stepLabel } from "../step-label";
 import { distill, type DistillOptions, type SkillDirectory } from "../distill";

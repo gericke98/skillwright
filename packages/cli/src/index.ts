@@ -1,7 +1,8 @@
-export { distill } from "./distill";
-export type { SkillDirectory, DistillOptions } from "./distill";
-export { distillSemantic } from "./distill/semantic";
 export {
+  distill,
+  type SkillDirectory,
+  type DistillOptions,
+  distillSemantic,
   inferIntent,
   inferParams,
   inferEffects,
@@ -9,11 +10,16 @@ export {
   type Intent,
   type ParamDef,
   type StepNarrative,
-} from "./distill/passes";
-export { summarizeSteps, scrubText, type StepSummary } from "./distill/sanitize";
+  summarizeSteps,
+  scrubText,
+  type StepSummary,
+  toSlug,
+  stepLabel,
+  toReplaySteps,
+  applyInputs,
+  MissingInputError,
+} from "@skillwright/shared";
 export { writeSkillDirectory } from "./write-skill";
-export { toSlug } from "./slug";
-export { stepLabel } from "./step-label";
 export { defaultLibraryDir } from "./paths";
 export {
   parseSkillMeta,
@@ -65,8 +71,6 @@ export {
 } from "./quarantine";
 export { translateSelector, type LocatorDescriptor } from "./translate-selector";
 export { PlaywrightStepDriver } from "./playwright-driver";
-export { toReplaySteps } from "./to-replay-steps";
-export { applyInputs, MissingInputError } from "./apply-inputs";
 export { runSkillByName, type RunSkillOptions } from "./run";
 export {
   RelayStepDriver,

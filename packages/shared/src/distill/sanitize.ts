@@ -1,10 +1,5 @@
-import {
-  PLACEHOLDER,
-  redactUrl,
-  redactValue,
-  valueLooksSecret,
-  type Recording,
-} from "@skillwright/shared";
+import { PLACEHOLDER, redactUrl, redactValue, valueLooksSecret } from "../redact";
+import type { Recording } from "../schema";
 import { stepLabel } from "../step-label";
 
 /** A per-step view safe to embed in an LLM prompt — never carries a secret. */

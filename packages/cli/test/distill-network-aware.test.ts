@@ -1,7 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@skillwright/shared";
-import { summarizeSteps } from "../src/distill/sanitize";
-import { inferParams } from "../src/distill/passes";
+import { type Recording, summarizeSteps, inferParams } from "@skillwright/shared";
 import { MockBackend } from "../src/llm/mock-backend";
 
 function rec(steps: Recording["steps"]): Recording {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { Recording } from "@skillwright/shared";
-import { MockBackend } from "../src/llm/mock-backend";
+import type { Recording } from "../src/index";
+import { MockBackend } from "./support/mock-backend";
 import { inferIntent, inferParams, inferEffects, narrate } from "../src/distill/passes";
 
 function rec(steps: Recording["steps"]): Recording {

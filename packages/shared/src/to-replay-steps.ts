@@ -1,12 +1,8 @@
-import {
-  classifyStepEffect,
-  deriveNetworkEffect,
-  EFFECT_SEVERITY,
-  roundUpEffect,
-  type CapturedRequest,
-  type Recording,
-} from "@skillwright/shared";
-import type { ReplayStep, StepRequest } from "./replay";
+import { classifyStepEffect } from "./classify-effect";
+import { deriveNetworkEffect } from "./network-effect";
+import { EFFECT_SEVERITY, type CapturedRequest, type Recording } from "./schema";
+import { roundUpEffect } from "./effect";
+import type { ReplayStep, StepRequest } from "./replay-step";
 
 /** The state-changing request a step is best replayed AS: the most-severe method
  * (a DELETE/POST beats the incidental GETs a click also triggers). */
