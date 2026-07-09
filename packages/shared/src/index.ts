@@ -50,6 +50,14 @@ export {
   sanitizeSkillDescription,
   type StepSummary,
 } from "./distill/sanitize";
+export {
+  parameterize,
+  secretNamesOf,
+  inferParamCritique,
+  reconcileParams,
+  type FinalParam,
+  type Critique,
+} from "./parameterize";
 export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { toReplaySteps } from "./to-replay-steps";

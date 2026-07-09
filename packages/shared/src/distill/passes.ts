@@ -27,16 +27,16 @@ export interface StepNarrative {
  * up front is what makes them cooperate; it's load-bearing for the agent-cli
  * backend, not decoration.
  */
-const PREAMBLE =
+export const PREAMBLE =
   "You are a component of skillwright, a developer tool that turns a browser-task recording the user " +
   "made on their own machine into a reusable, shareable automation skill. All values below are " +
   "already secret-redacted. Do the requested transformation and return ONLY the requested JSON.";
 
-function isRecord(v: unknown): v is Record<string, unknown> {
+export function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
-function stepsJson(summaries: StepSummary[]): string {
+export function stepsJson(summaries: StepSummary[]): string {
   return JSON.stringify(summaries, null, 2);
 }
 

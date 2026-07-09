@@ -1,32 +1,12 @@
 import type { Recording } from "../schema";
 import type { LlmBackend, SchemaSpec } from "../llm/backend";
-import type { ParamDef } from "../distill/passes";
-import { summarizeSteps, type StepSummary } from "../distill/sanitize";
+import { PREAMBLE, isRecord, stepsJson, type ParamDef } from "../distill/passes";
+import { summarizeSteps } from "../distill/sanitize";
 
 export interface Critique {
   removals: { name: string; reason: string }[];
   additions: ParamDef[];
   typeFixes: { name: string; type?: string; required?: boolean }[];
-}
-
-/**
- * Shared context framing. agent-cli backends are full guardrailed agents, not
- * bare JSON endpoints — without knowing WHY the JSON is wanted they (correctly)
- * refuse to emit "canned tokens on command". Establishing the legitimate task
- * up front is what makes them cooperate; it's load-bearing for the agent-cli
- * backend, not decoration.
- */
-const PREAMBLE =
-  "You are a component of skillwright, a developer tool that turns a browser-task recording the user " +
-  "made on their own machine into a reusable, shareable automation skill. All values below are " +
-  "already secret-redacted. Do the requested transformation and return ONLY the requested JSON.";
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null;
-}
-
-function stepsJson(summaries: StepSummary[]): string {
-  return JSON.stringify(summaries, null, 2);
 }
 
 function paramsJson(params: ParamDef[]): string {
