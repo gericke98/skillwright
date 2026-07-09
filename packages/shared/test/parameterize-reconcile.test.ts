@@ -126,4 +126,37 @@ describe("reconcile", () => {
     expect(matches[0]?.demoValue).toBe("eu");
     expect(matches[0]?.required).toBe(true);
   });
+
+  it("hardens every occurrence when the proposer emits a duplicate secret name", () => {
+    const out = reconcileParams(
+      [
+        { name: "password", type: "string", required: false, demoValue: "hunter2" },
+        { name: "password", type: "number", required: true, demoValue: "s3cret" },
+      ],
+      { removals: [], additions: [], typeFixes: [] },
+      new Set(["password"]),
+    );
+    const matches = out.filter((p) => p.name === "password");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.required).toBe(true);
+    expect(matches[0]?.type).toBe("string");
+    expect(matches[0]?.demoValue).toBe("");
+    expect(out.some((p) => p.name === "password" && p.demoValue !== "")).toBe(false);
+  });
+
+  it("dedupes a duplicate non-secret name, first occurrence wins", () => {
+    const out = reconcileParams(
+      [
+        { name: "region", type: "string", required: false, demoValue: "us" },
+        { name: "region", type: "number", required: true, demoValue: "eu" },
+      ],
+      { removals: [], additions: [], typeFixes: [] },
+      new Set(),
+    );
+    const matches = out.filter((p) => p.name === "region");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.demoValue).toBe("us");
+    expect(matches[0]?.type).toBe("string");
+    expect(matches[0]?.required).toBe(false);
+  });
 });

@@ -12,7 +12,10 @@ export interface FinalParam extends ParamDef {
  * Pure function, no LLM call — the whole point is that these rules are fixed
  * and auditable rather than another model's opinion. Rule order matters:
  *
- *   1. Start from `proposal`, apply `typeFixes` (by name).
+ *   1. Start from `proposal`, deduped by name (first occurrence wins — a
+ *      duplicate param name is invalid regardless of secrecy, since two
+ *      params can't both be substituted and the frontmatter would be
+ *      ambiguous), then apply `typeFixes` (by name).
  *   2. Apply `removals` ONLY when the name is not a secret AND a non-empty
  *      reason is present — a removal of a secret, or one without a reason,
  *      is silently ignored (the param is kept).
@@ -21,7 +24,11 @@ export interface FinalParam extends ParamDef {
  *   4. Force every `secretNames` member to be present with `required: true`,
  *      `type: "string"`, and `demoValue: ""` — overriding anything the
  *      proposer/critic said. No LLM-supplied type or value may ride along on
- *      a secret param; this floor cannot be weakened by the critic.
+ *      a secret param; this floor cannot be weakened by the critic. Since
+ *      step 1 already dedupes by name, at most one entry can match here —
+ *      but every matching entry is hardened (not just the first found), as
+ *      defense-in-depth against any future step that could reintroduce a
+ *      duplicate.
  *   5. Assign `rationale` + `confidence`.
  *
  * Confidence-default choice: params the critic never touched (not added, not
@@ -36,8 +43,14 @@ export function reconcileParams(proposal: ParamDef[], critique: Critique, secret
   const typeFixByName = new Map(critique.typeFixes.map((f) => [f.name, f]));
   const touchedByTypeFix = new Set(critique.typeFixes.map((f) => f.name));
 
-  // Step 1: start from proposal, apply typeFixes.
-  const working: FinalParam[] = proposal.map((p) => {
+  // Step 1: dedupe proposal by name (first occurrence wins), then apply typeFixes.
+  const seenNames = new Set<string>();
+  const dedupedProposal = proposal.filter((p) => {
+    if (seenNames.has(p.name)) return false;
+    seenNames.add(p.name);
+    return true;
+  });
+  const working: FinalParam[] = dedupedProposal.map((p) => {
     const fix = typeFixByName.get(p.name);
     return {
       ...p,
@@ -66,11 +79,13 @@ export function reconcileParams(proposal: ParamDef[], critique: Critique, secret
   // required:true, type:"string", demoValue:"" — no LLM-supplied type or
   // value may ride along on a secret param, whichever branch it came from.
   for (const secretName of secretNames) {
-    const existing = result.find((p) => p.name === secretName);
-    if (existing) {
-      existing.required = true;
-      existing.type = "string";
-      existing.demoValue = "";
+    const existingMatches = result.filter((p) => p.name === secretName);
+    if (existingMatches.length > 0) {
+      for (const existing of existingMatches) {
+        existing.required = true;
+        existing.type = "string";
+        existing.demoValue = "";
+      }
     } else {
       result.push({
         name: secretName,
