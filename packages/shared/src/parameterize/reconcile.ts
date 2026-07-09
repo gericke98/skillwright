@@ -18,9 +18,10 @@ export interface FinalParam extends ParamDef {
  *      is silently ignored (the param is kept).
  *   3. Union `critique.additions`, deduped by name against what's already
  *      present after steps 1-2.
- *   4. Force every `secretNames` member to be present and `required: true`,
- *      overriding anything the proposer/critic said — this floor cannot be
- *      removed by the critic.
+ *   4. Force every `secretNames` member to be present with `required: true`,
+ *      `type: "string"`, and `demoValue: ""` — overriding anything the
+ *      proposer/critic said. No LLM-supplied type or value may ride along on
+ *      a secret param; this floor cannot be weakened by the critic.
  *   5. Assign `rationale` + `confidence`.
  *
  * Confidence-default choice: params the critic never touched (not added, not
@@ -61,11 +62,15 @@ export function reconcileParams(proposal: ParamDef[], critique: Critique, secret
     result.push({ ...addition, rationale: "", confidence: "low" });
   }
 
-  // Step 4: force every secret to be present and required:true.
+  // Step 4: force every secret to be present with the hardened floor —
+  // required:true, type:"string", demoValue:"" — no LLM-supplied type or
+  // value may ride along on a secret param, whichever branch it came from.
   for (const secretName of secretNames) {
     const existing = result.find((p) => p.name === secretName);
     if (existing) {
       existing.required = true;
+      existing.type = "string";
+      existing.demoValue = "";
     } else {
       result.push({
         name: secretName,
