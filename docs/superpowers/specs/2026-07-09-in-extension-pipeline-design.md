@@ -93,6 +93,8 @@ packages/extension/              ← frontend #2 (new capability, side panel)
 2. **Critic** (LLM) — adversarial second pass over the recording + proposal: missed inputs (fixed-looking but task-specific, e.g. an account ID), over-parameterization (UI-fixed value marked variable), wrong types/required. Returns challenges + adjusted list.
 3. **Reconcile** (deterministic code, no LLM) — merge rules: secrets/redacted values are **always** parameters (existing `passes.ts` rule enforced as a code floor the LLM cannot override); critic removals require a stated reason; otherwise union. Emits final `ParamSpec[]` with per-param rationale + confidence.
 
+   **Hardened secret floor** (amended 2026-07-09, approved after the Task 3.2 review): for EVERY secret — not only ones the proposer missed — the reconcile step unconditionally forces `required: true`, `type: "string"`, and `demoValue: ""`. Neither a critic `typeFix` nor a name-colliding critic `addition` may inject a type or a value onto a secret param. The original wording ("present and `required: true`") left the already-exists branch able to carry an LLM-supplied `type`/`demoValue`.
+
 **Approval UI:** panel shows the reconciled list — name, type, required toggle, captured example value, rationale, variable⇄constant toggle. One approval; quality from the two-agent pass.
 
 ## 7. LLM client, secrets, and export
