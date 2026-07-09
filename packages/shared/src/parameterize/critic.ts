@@ -100,7 +100,7 @@ export function inferParamCritique(
     paramsJson(proposal),
     "Steps:",
     stepsJson(summarizeSteps(recording)),
-    "Return JSON: { \"removals\": [ { \"name\", \"reason\" } ], " +
+    'Return JSON: { "removals": [ { "name", "reason" } ], ' +
       '"additions": [ { "name", "type", "required", "demoValue", "description" } ], ' +
       '"typeFixes": [ { "name", "type", "required" } ] }',
   ].join("\n");
