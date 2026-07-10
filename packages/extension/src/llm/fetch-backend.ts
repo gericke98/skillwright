@@ -29,9 +29,19 @@ interface OpenAiResponse {
   choices?: Array<{ message?: { content?: string } }>;
 }
 
-async function readErrorBody(res: Response): Promise<string> {
+/**
+ * Replace every occurrence of `apiKey` in `text` with `[REDACTED]`. A no-op
+ * for an empty/short key so we never `split` on `""` (which would explode
+ * the string character-wise and produce nonsense output).
+ */
+function scrubApiKey(text: string, apiKey: string): string {
+  if (!apiKey || apiKey.length < 4) return text;
+  return text.split(apiKey).join("[REDACTED]");
+}
+
+async function readErrorBody(res: Response, apiKey: string): Promise<string> {
   try {
-    const text = await res.text();
+    const text = scrubApiKey(await res.text(), apiKey);
     return text.length > ERROR_BODY_TRUNCATE ? `${text.slice(0, ERROR_BODY_TRUNCATE)}...` : text;
   } catch {
     return "<unreadable body>";
@@ -41,7 +51,11 @@ async function readErrorBody(res: Response): Promise<string> {
 /**
  * NEVER include `cfg.apiKey` (or any header/body that might carry it) in a
  * thrown error or log line — this backend is BYO-key and the key must stay
- * inside chrome.storage.local only.
+ * inside chrome.storage.local only. Real providers can echo the caller's key
+ * back verbatim in auth-failure bodies (e.g. OpenAI's 401 body literally
+ * reads "Incorrect API key provided: sk-..."), so `readErrorBody` scrubs
+ * every occurrence of the key BEFORE truncating — never rely on truncation
+ * alone to keep it out.
  */
 function makeAnthropicGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch) {
   return async (prompt: string): Promise<string> => {
@@ -60,11 +74,16 @@ function makeAnthropicGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch)
       }),
     });
     if (!res.ok) {
-      throw new Error(`Anthropic API error ${res.status} ${res.statusText}: ${await readErrorBody(res)}`);
+      throw new Error(
+        `Anthropic API error ${res.status} ${res.statusText}: ${await readErrorBody(res, cfg.apiKey)}`,
+      );
     }
     const data = (await res.json()) as AnthropicResponse;
     const block = data.content?.[0];
-    return typeof block?.text === "string" ? block.text : "";
+    if (typeof block?.text !== "string") {
+      throw new Error("Anthropic response missing content[0].text");
+    }
+    return block.text;
   };
 }
 
@@ -82,11 +101,16 @@ function makeOpenAiGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch) {
       }),
     });
     if (!res.ok) {
-      throw new Error(`OpenAI API error ${res.status} ${res.statusText}: ${await readErrorBody(res)}`);
+      throw new Error(
+        `OpenAI API error ${res.status} ${res.statusText}: ${await readErrorBody(res, cfg.apiKey)}`,
+      );
     }
     const data = (await res.json()) as OpenAiResponse;
     const content = data.choices?.[0]?.message?.content;
-    return typeof content === "string" ? content : "";
+    if (typeof content !== "string") {
+      throw new Error("OpenAI response missing choices[0].message.content");
+    }
+    return content;
   };
 }
 
