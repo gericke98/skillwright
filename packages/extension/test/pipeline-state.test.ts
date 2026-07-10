@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { FinalParam, Recording, SkillDirectory } from "@skillwright/shared";
-import { advance, initialState, type PipelineState } from "../src/pipeline/state";
+import { advance, initialState, type PipelineEvent, type PipelineState } from "../src/pipeline/state";
 
 const recording: Recording = {
   title: "Delete invoice",
@@ -104,6 +104,12 @@ describe("advance — out-of-order events are a no-op, not a crash", () => {
     expect(() => advance(initialState(), { kind: "verified" })).not.toThrow();
     expect(() => advance(initialState(), { kind: "exported" })).not.toThrow();
   });
+
+  test("preserves a pre-existing error on an out-of-order no-op (does not clear it)", () => {
+    const start: PipelineState = { stage: "distill", error: "boom" };
+    const next = advance(start, { kind: "verified" });
+    expect(next).toEqual({ stage: "distill", error: "boom" });
+  });
 });
 
 describe("advance — purity and immutability", () => {
@@ -173,5 +179,90 @@ describe("advance — payload accumulation", () => {
     state = advance(state, { kind: "scripted", skill: scriptedSkill });
     expect(state.skill).toEqual(scriptedSkill);
     expect(state.skill).not.toEqual(distilledSkill);
+  });
+});
+
+describe("advance — nested payload immutability (skill.files and params members)", () => {
+  test("carrying forward a deep-frozen skill and deep-frozen params does not mutate them (scripted event)", () => {
+    const frozenSkill: SkillDirectory = { slug: "delete-invoice", files: { "SKILL.md": "# Delete invoice" } };
+    const frozenParams: FinalParam[] = [{ ...params[0] }];
+    Object.freeze(frozenSkill.files);
+    Object.freeze(frozenSkill);
+    frozenParams.forEach((p) => Object.freeze(p));
+    Object.freeze(frozenParams);
+    const start: PipelineState = { stage: "script", recording, skill: frozenSkill, params: frozenParams };
+    Object.freeze(start);
+
+    expect(() => advance(start, { kind: "scripted", skill: scriptedSkill })).not.toThrow();
+    const next = advance(start, { kind: "scripted", skill: scriptedSkill });
+
+    expect(frozenSkill).toEqual({ slug: "delete-invoice", files: { "SKILL.md": "# Delete invoice" } });
+    expect(frozenParams).toEqual([params[0]]);
+    expect(next.skill).toEqual(scriptedSkill);
+    expect(next.params).toEqual(frozenParams);
+  });
+
+  test("carrying forward a deep-frozen skill is not mutated when params are replaced (parameterized event)", () => {
+    const frozenSkill: SkillDirectory = { slug: "delete-invoice", files: { "SKILL.md": "# Delete invoice" } };
+    Object.freeze(frozenSkill.files);
+    Object.freeze(frozenSkill);
+    const start: PipelineState = { stage: "parameterize", recording, skill: frozenSkill };
+    Object.freeze(start);
+
+    const newParams: FinalParam[] = [{ ...params[0], name: "otherId" }];
+    expect(() => advance(start, { kind: "parameterized", params: newParams })).not.toThrow();
+    const next = advance(start, { kind: "parameterized", params: newParams });
+
+    expect(frozenSkill).toEqual({ slug: "delete-invoice", files: { "SKILL.md": "# Delete invoice" } });
+    expect(next.skill).toEqual(frozenSkill);
+    expect(next.params).toEqual(newParams);
+  });
+});
+
+describe("advance — malformed event/state (defensive boundary against untyped chrome.runtime messages)", () => {
+  test("returns state unchanged for a null event instead of throwing", () => {
+    const start: PipelineState = { stage: "distill", recording };
+    expect(() => advance(start, null as unknown as PipelineEvent)).not.toThrow();
+    expect(advance(start, null as unknown as PipelineEvent)).toEqual(start);
+  });
+
+  test("returns state unchanged for an undefined event instead of throwing", () => {
+    const start: PipelineState = { stage: "distill", recording };
+    expect(() => advance(start, undefined as unknown as PipelineEvent)).not.toThrow();
+    expect(advance(start, undefined as unknown as PipelineEvent)).toEqual(start);
+  });
+
+  test("returns state unchanged for a non-object (string) event instead of throwing", () => {
+    const start: PipelineState = { stage: "distill", recording };
+    expect(() => advance(start, "recorded" as unknown as PipelineEvent)).not.toThrow();
+    expect(advance(start, "recorded" as unknown as PipelineEvent)).toEqual(start);
+  });
+
+  test("returns state unchanged for an object event missing `kind` instead of throwing", () => {
+    const start: PipelineState = { stage: "distill", recording };
+    expect(() => advance(start, {} as unknown as PipelineEvent)).not.toThrow();
+    expect(advance(start, {} as unknown as PipelineEvent)).toEqual(start);
+  });
+
+  test("returns state unchanged for an object event with a non-string `kind`", () => {
+    const start: PipelineState = { stage: "distill", recording };
+    const malformed = { kind: 42 } as unknown as PipelineEvent;
+    expect(() => advance(start, malformed)).not.toThrow();
+    expect(advance(start, malformed)).toEqual(start);
+  });
+
+  test("returns initialState() for a null state instead of throwing", () => {
+    expect(() => advance(null as unknown as PipelineState, { kind: "reset" })).not.toThrow();
+    expect(advance(null as unknown as PipelineState, { kind: "reset" })).toEqual(initialState());
+  });
+
+  test("returns initialState() for an undefined state instead of throwing", () => {
+    expect(() => advance(undefined as unknown as PipelineState, { kind: "recorded", recording })).not.toThrow();
+    expect(advance(undefined as unknown as PipelineState, { kind: "recorded", recording })).toEqual(initialState());
+  });
+
+  test("does not throw when both state and event are malformed", () => {
+    expect(() => advance(null as unknown as PipelineState, null as unknown as PipelineEvent)).not.toThrow();
+    expect(advance(null as unknown as PipelineState, null as unknown as PipelineEvent)).toEqual(initialState());
   });
 });

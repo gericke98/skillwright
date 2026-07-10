@@ -8,6 +8,11 @@ export type Stage = "record" | "distill" | "parameterize" | "script" | "export" 
 
 export interface PipelineState {
   stage: Stage;
+  /**
+   * Deliberate extension beyond the brief's literal interface text: the
+   * recording must flow forward so it's available to `distill()` in later
+   * pipeline stages.
+   */
   recording?: Recording;
   skill?: SkillDirectory;
   params?: FinalParam[];
@@ -48,8 +53,21 @@ export function initialState(): PipelineState {
  * - Payloads accumulate: `recording`, `skill`, and `params` set by earlier
  *   stages are preserved by later transitions, except `scripted`, which
  *   REPLACES `skill` with the script-bearing SkillDirectory.
+ *
+ * Defensive boundary: `state` and `event` are typed, but in practice `event`
+ * arrives over `chrome.runtime` messaging, which is untyped at the wire. A
+ * malformed/missing `state` or `event` must never throw — it's treated as
+ * a no-op (or reset to `initialState()` for a malformed `state`) rather than
+ * crashing the panel.
  */
 export function advance(state: PipelineState, event: PipelineEvent): PipelineState {
+  if (typeof state !== "object" || state === null) {
+    return initialState();
+  }
+  if (typeof event !== "object" || event === null || typeof (event as { kind?: unknown }).kind !== "string") {
+    return { ...state };
+  }
+
   switch (event.kind) {
     case "reset":
       return initialState();
@@ -78,6 +96,10 @@ export function advance(state: PipelineState, event: PipelineEvent): PipelineSta
       return { ...withoutError(state), stage: "verify" };
 
     case "verified":
+      // Same-stage confirmation event, not a transition: `exported` already
+      // advances export -> verify. `verified` exists so a retry after a
+      // failed verify can clear the stale error without a full `reset`
+      // (Verify is an OPTIONAL side-action per the design doc, not a gate).
       if (state.stage !== "verify") return { ...state };
       return { ...withoutError(state), stage: "verify" };
 
