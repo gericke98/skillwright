@@ -308,6 +308,24 @@ describe("fetch backend", () => {
 - [ ] **Step 4: Run — expect PASS; full suite.**
 - [ ] **Step 5: Commit** — `git commit -am "feat(extension): panel pipeline + parameter approval UI"`.
 
+### Task 5.3: Wire the distill stage (added 2026-07-09 — plan gap found during 5.2)
+
+**Gap:** the original plan wired the state reducer (5.1) and the parameter-approval UI (5.2) but nothing ever called the distiller or fired the `distilled` event, so the panel advanced `record → distill` and hung. This task closes it, and delivers the spec's §8 graceful-degradation requirement, which no other task implemented.
+
+**Files:**
+- Create: `packages/extension/src/pipeline/run-distill.ts`
+- Test: `packages/extension/test/run-distill.test.ts`
+- Modify: `packages/extension/src/panel.ts`
+
+**Interfaces:**
+- Produces: `runDistill(recording, backend: LlmBackend | undefined, opts?: {name?: string}): Promise<{ skill: SkillDirectory; usedLlm: boolean; llmError?: string }>`
+
+- [ ] **Step 1–4 (TDD):** semantic path when a backend is given; **fall back to the zero-LLM `distill()` when the LLM throws for any reason** (no key, bad key, rate limit, network, malformed response) so authoring never hard-blocks; skip the network entirely when no backend is configured; never throw.
+- [ ] **Step 5:** wire `panel.ts` to call it on entering the `distill` stage, then `advance(state, {kind:"distilled", skill})`; surface a non-fatal notice on the degraded path ("compiled without AI"). Guard re-entry.
+- [ ] **Step 6–7:** full suite + typecheck clean; commit `feat(extension): wire the distill stage with zero-LLM fallback`.
+
+**Security:** `llmError` is provider-authored text — it must never carry the API key (already scrubbed in `fetch-backend.ts`) and must render via `textContent`.
+
 ---
 
 ## Phase 6 — Export (tiered)
