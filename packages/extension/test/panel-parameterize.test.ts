@@ -142,6 +142,48 @@ describe("renderParamApproval — secret hardening", () => {
 
     expect(emitted!.some((p) => p.name === "password")).toBe(true);
   });
+
+  test("a high-confidence (secret) param's required checkbox is checked AND disabled", () => {
+    renderParamApproval(container, [secretParam], { onApprove: () => {} });
+    const row = container.querySelector(".param-row")!;
+    const required = row.querySelector<HTMLInputElement>(".param-required")!;
+    expect(required.checked).toBe(true);
+    expect(required.disabled).toBe(true);
+  });
+
+  test("secret's required stays true on approve even if a disabled required input is force-unchecked via JS", () => {
+    let emitted: FinalParam[] | undefined;
+    renderParamApproval(container, [...baseParams, secretParam], { onApprove: (p) => (emitted = p) });
+
+    const rows = container.querySelectorAll(".param-row");
+    const secretRow = Array.from(rows).find((r) => r.classList.contains("param-secret"))!;
+    const required = secretRow.querySelector<HTMLInputElement>(".param-required")!;
+    // Force-tamper a disabled input directly via JS (bypassing normal user interaction,
+    // and bypassing the ordinary click-a-checkbox path too).
+    required.checked = false;
+
+    container.querySelector<HTMLButtonElement>("#approve-params")!.click();
+
+    const secret = emitted!.find((p) => p.name === "password");
+    expect(secret?.required).toBe(true);
+  });
+
+  test("a non-secret param's required checkbox still works normally (unchecking emits required: false)", () => {
+    let emitted: FinalParam[] | undefined;
+    renderParamApproval(container, baseParams, { onApprove: (p) => (emitted = p) });
+
+    const rows = container.querySelectorAll(".param-row");
+    const req0 = rows[0]!.querySelector<HTMLInputElement>(".param-required")!;
+    expect(req0.checked).toBe(true);
+    expect(req0.disabled).toBe(false);
+    req0.checked = false;
+    req0.dispatchEvent(new Event("change"));
+
+    container.querySelector<HTMLButtonElement>("#approve-params")!.click();
+
+    const invoiceId = emitted!.find((p) => p.name === "invoiceId");
+    expect(invoiceId?.required).toBe(false);
+  });
 });
 
 describe("renderParamApproval — XSS safety", () => {

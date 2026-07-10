@@ -27,9 +27,10 @@ export interface ParamViewHandlers {
  *
  * Secret hardening: a param with `confidence === "high"` is a secret (the
  * shared reconciler's hardened floor sets exactly this for a param it forced
- * in). Its `.param-include` checkbox is rendered checked + disabled so it
- * cannot be demoted to a constant from the UI, and `onApprove` recomputes
- * inclusion from the source `params` array for secrets — it never trusts a
+ * in). Both its `.param-include` and `.param-required` checkboxes are
+ * rendered checked + disabled so it cannot be demoted to a constant or to
+ * not-required from the UI, and `onApprove` recomputes both inclusion and
+ * required from the source `params` array for secrets — it never trusts a
  * disabled input's live DOM state, which could be tampered with via
  * devtools/JS regardless of the `disabled` attribute.
  */
@@ -71,6 +72,7 @@ export function renderParamApproval(container: HTMLElement, params: FinalParam[]
     requiredInput.type = "checkbox";
     requiredInput.className = "param-required";
     requiredInput.checked = param.required;
+    if (secret) requiredInput.disabled = true;
     requiredLabel.appendChild(requiredInput);
     requiredLabel.appendChild(document.createTextNode("required"));
     row.appendChild(requiredLabel);
@@ -96,7 +98,10 @@ export function renderParamApproval(container: HTMLElement, params: FinalParam[]
   approveButton.textContent = "Approve";
   approveButton.addEventListener("click", () => {
     const edited = params
-      .map((param, i) => ({ ...param, required: requiredInputs[i]!.checked }))
+      // Recompute required from source `params`, not the (possibly
+      // tampered) DOM: a secret is ALWAYS required, regardless of the
+      // disabled checkbox's live `.checked` state.
+      .map((param, i) => ({ ...param, required: isSecret(param) ? true : requiredInputs[i]!.checked }))
       // Recompute inclusion from source `params`, not the (possibly
       // tampered) DOM: a secret is ALWAYS included, regardless of the
       // disabled checkbox's live `.checked` state.
