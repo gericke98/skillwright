@@ -7,6 +7,7 @@ import { renderStages } from "./pipeline/stage-view";
 import { renderParamApproval } from "./pipeline/param-view";
 import { readLlmSettings } from "./llm/settings";
 import { createFetchBackend } from "./llm/fetch-backend";
+import { runDistill } from "./pipeline/run-distill";
 
 /** Save a finished recording as a file with a proper name (panel has a window). */
 function downloadRecording(msg: SavedRecordingMessage): void {
@@ -66,19 +67,50 @@ relayConnect.addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pipeline strip + parameter-approval view (Task 5.2). Rendering itself lives
-// in pipeline/stage-view.ts + pipeline/param-view.ts (pure, unit-tested);
-// panel.ts only holds the PipelineState, calls advance(), and delegates to
-// those renderers. Distill orchestration (recording -> SkillDirectory) is not
-// wired here — out of this task's scope (not in its consumed interfaces) — so
-// the strip currently advances record -> distill and then waits; a later
-// task's "distilled" event will carry it into "parameterize", which is fully
-// wired below.
+// Pipeline strip + parameter-approval view (Task 5.2/5.3). Rendering itself
+// lives in pipeline/stage-view.ts + pipeline/param-view.ts (pure,
+// unit-tested); panel.ts only holds the PipelineState, calls advance(), and
+// delegates to those renderers. Distill orchestration itself
+// (recording -> SkillDirectory, with zero-LLM fallback) lives in the
+// unit-tested pipeline/run-distill.ts; panel.ts only wires it to the stage
+// transition and DOM below.
 const stagesEl = document.getElementById("stages") as HTMLDivElement;
+const distillNoticeEl = document.getElementById("distill-notice") as HTMLDivElement;
 const parameterizeEl = document.getElementById("stage-parameterize") as HTMLDivElement;
 
 let pipeline: PipelineState = initialState();
+let distillStarted = false;
 let parameterizeStarted = false;
+
+/** Non-fatal notice for the zero-LLM degraded path: never blocks the
+ * pipeline, never prints the raw provider error as the primary message, and
+ * only ever sets text via `textContent` — `llmError` is provider-authored
+ * text and must never be interpreted as HTML. */
+function renderDistillNotice(llmError: string): void {
+  distillNoticeEl.innerHTML = "";
+  const primary = document.createElement("p");
+  primary.className = "stage-notice";
+  primary.textContent =
+    "This skill was compiled without AI assistance. Add an API key in settings for richer step descriptions.";
+  distillNoticeEl.appendChild(primary);
+  const detail = document.createElement("p");
+  detail.className = "stage-notice-detail";
+  detail.textContent = llmError;
+  distillNoticeEl.appendChild(detail);
+}
+
+async function runDistillStage(recordingToDistill: Recording): Promise<void> {
+  distillNoticeEl.innerHTML = "";
+  const settings = await readLlmSettings();
+  const backend = settings ? createFetchBackend(settings) : undefined;
+  const result = await runDistill(recordingToDistill, backend);
+  if (!result.usedLlm && result.llmError) {
+    // Degraded path is NON-FATAL: surface a notice, but still advance with
+    // the zero-LLM skill so parameterize runs next — never fire `failed`.
+    renderDistillNotice(result.llmError);
+  }
+  setPipeline(advance(pipeline, { kind: "distilled", skill: result.skill }));
+}
 
 async function runParameterizeStage(recordingToParameterize: Recording): Promise<void> {
   parameterizeEl.innerHTML = "";
@@ -105,9 +137,16 @@ async function runParameterizeStage(recordingToParameterize: Recording): Promise
 }
 
 function setPipeline(next: PipelineState): void {
+  const enteringDistill = next.stage === "distill" && pipeline.stage !== "distill";
   const enteringParameterize = next.stage === "parameterize" && pipeline.stage !== "parameterize";
   pipeline = next;
   renderStages(stagesEl, pipeline.stage, pipeline.error);
+  if (pipeline.stage !== "distill") {
+    distillStarted = false;
+  } else if (enteringDistill && !distillStarted && pipeline.recording) {
+    distillStarted = true;
+    void runDistillStage(pipeline.recording);
+  }
   if (pipeline.stage !== "parameterize") {
     parameterizeStarted = false;
     parameterizeEl.innerHTML = "";
