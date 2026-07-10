@@ -1,5 +1,12 @@
 /** Side panel controller — thin UI over the background worker's state. */
+import type { Recording } from "@skillwright/shared";
+import { parameterize } from "@skillwright/shared";
 import type { PanelMessage, StatusMessage, SavedRecordingMessage, RelayStatusMessage } from "./messages";
+import { advance, initialState, type PipelineState } from "./pipeline/state";
+import { renderStages } from "./pipeline/stage-view";
+import { renderParamApproval } from "./pipeline/param-view";
+import { readLlmSettings } from "./llm/settings";
+import { createFetchBackend } from "./llm/fetch-backend";
 
 /** Save a finished recording as a file with a proper name (panel has a window). */
 function downloadRecording(msg: SavedRecordingMessage): void {
@@ -58,12 +65,81 @@ relayConnect.addEventListener("click", () => {
   relayStatus.textContent = "connecting…";
 });
 
-// Live status pushes, the finished-recording download, and relay status.
+// ---------------------------------------------------------------------------
+// Pipeline strip + parameter-approval view (Task 5.2). Rendering itself lives
+// in pipeline/stage-view.ts + pipeline/param-view.ts (pure, unit-tested);
+// panel.ts only holds the PipelineState, calls advance(), and delegates to
+// those renderers. Distill orchestration (recording -> SkillDirectory) is not
+// wired here — out of this task's scope (not in its consumed interfaces) — so
+// the strip currently advances record -> distill and then waits; a later
+// task's "distilled" event will carry it into "parameterize", which is fully
+// wired below.
+const stagesEl = document.getElementById("stages") as HTMLDivElement;
+const parameterizeEl = document.getElementById("stage-parameterize") as HTMLDivElement;
+
+let pipeline: PipelineState = initialState();
+let parameterizeStarted = false;
+
+async function runParameterizeStage(recordingToParameterize: Recording): Promise<void> {
+  parameterizeEl.innerHTML = "";
+  const settings = await readLlmSettings();
+  if (!settings) {
+    const prompt = document.createElement("p");
+    prompt.className = "settings-prompt";
+    prompt.textContent = "Configure an LLM provider + API key in settings before parameterizing.";
+    parameterizeEl.appendChild(prompt);
+    return;
+  }
+
+  const backend = createFetchBackend(settings);
+  try {
+    const params = await parameterize(recordingToParameterize, backend);
+    renderParamApproval(parameterizeEl, params, {
+      onApprove: (edited) => {
+        setPipeline(advance(pipeline, { kind: "parameterized", params: edited }));
+      },
+    });
+  } catch (e) {
+    setPipeline(advance(pipeline, { kind: "failed", error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+function setPipeline(next: PipelineState): void {
+  const enteringParameterize = next.stage === "parameterize" && pipeline.stage !== "parameterize";
+  pipeline = next;
+  renderStages(stagesEl, pipeline.stage, pipeline.error);
+  if (pipeline.stage !== "parameterize") {
+    parameterizeStarted = false;
+    parameterizeEl.innerHTML = "";
+  } else if (enteringParameterize && !parameterizeStarted && pipeline.recording) {
+    parameterizeStarted = true;
+    void runParameterizeStage(pipeline.recording);
+  }
+}
+
+setPipeline(pipeline);
+
+/** Parse a finished recording's JSON and feed it into the pipeline reducer. A
+ * parse failure becomes a `failed` event rather than throwing — the message
+ * arrives over `chrome.runtime`, which is untyped at the wire. */
+function onRecordingSaved(msg: SavedRecordingMessage): void {
+  try {
+    const parsed = JSON.parse(msg.json) as Recording;
+    setPipeline(advance(pipeline, { kind: "recorded", recording: parsed }));
+  } catch (e) {
+    setPipeline(advance(pipeline, { kind: "failed", error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+// Live status pushes, the finished-recording download (+ pipeline feed), and
+// relay status.
 chrome.runtime.onMessage.addListener(
   (msg: StatusMessage | SavedRecordingMessage | RelayStatusMessage) => {
     if (msg?.kind === "status") render(msg);
-    else if (msg?.kind === "recording") downloadRecording(msg);
-    else if (msg?.kind === "relaystatus") relayStatus.textContent = msg.status;
+    else if (msg?.kind === "recording") {
+      downloadRecording(msg);
+      onRecordingSaved(msg);
+    } else if (msg?.kind === "relaystatus") relayStatus.textContent = msg.status;
   },
 );
 
