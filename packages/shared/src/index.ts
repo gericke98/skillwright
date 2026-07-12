@@ -58,6 +58,7 @@ export {
   type FinalParam,
   type Critique,
 } from "./parameterize";
+export { applyParamsToSkill } from "./parameterize/apply-to-skill";
 export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { toReplaySteps } from "./to-replay-steps";

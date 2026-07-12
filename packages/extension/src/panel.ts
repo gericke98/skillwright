@@ -1,6 +1,6 @@
 /** Side panel controller — thin UI over the background worker's state. */
 import type { Recording } from "@skillwright/shared";
-import { parameterize } from "@skillwright/shared";
+import { applyParamsToSkill, parameterize } from "@skillwright/shared";
 import type { PanelMessage, StatusMessage, SavedRecordingMessage, RelayStatusMessage } from "./messages";
 import { advance, initialState, type PipelineState } from "./pipeline/state";
 import { renderStages } from "./pipeline/stage-view";
@@ -139,6 +139,7 @@ async function runParameterizeStage(recordingToParameterize: Recording): Promise
 function setPipeline(next: PipelineState): void {
   const enteringDistill = next.stage === "distill" && pipeline.stage !== "distill";
   const enteringParameterize = next.stage === "parameterize" && pipeline.stage !== "parameterize";
+  const enteringScript = next.stage === "script" && pipeline.stage !== "script";
   pipeline = next;
   renderStages(stagesEl, pipeline.stage, pipeline.error);
   if (pipeline.stage !== "distill") {
@@ -153,6 +154,15 @@ function setPipeline(next: PipelineState): void {
   } else if (enteringParameterize && !parameterizeStarted && pipeline.recording) {
     parameterizeStarted = true;
     void runParameterizeStage(pipeline.recording);
+  }
+  // Script stage is synchronous: bake the approved params into the artifact
+  // (skillwright-inputs frontmatter) and advance. Deferred to a microtask so
+  // the re-entrant setPipeline runs after this one has fully finished.
+  if (enteringScript && pipeline.skill && pipeline.params) {
+    const { skill, params } = pipeline;
+    queueMicrotask(() => {
+      setPipeline(advance(pipeline, { kind: "scripted", skill: applyParamsToSkill(skill, params) }));
+    });
   }
 }
 
