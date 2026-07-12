@@ -330,6 +330,33 @@ describe("fetch backend", () => {
 
 ## Phase 6 — Export (tiered)
 
+### Task 6.0: Script stage wiring — applyParamsToSkill (added 2026-07-12 — plan gap found before 6.1)
+
+**Gap:** after parameter approval the reducer enters the `script` stage, but no task ever fires
+`scripted` — the pipeline stalls there and Task 6.2's "export button gets the final `SkillDirectory`"
+has no producer. The approved `FinalParam[]` also never lands in the artifact, yet Task 8.1 asserts
+`skillwright-inputs` frontmatter *after approval*.
+
+**Files:**
+- Create: `packages/shared/src/parameterize/apply-to-skill.ts`
+- Test: `packages/shared/test/apply-to-skill.test.ts`
+- Modify: `packages/shared/src/index.ts` (export), `packages/extension/src/panel.ts` (fire `scripted`)
+
+**Interfaces:**
+- Produces: `applyParamsToSkill(skill: SkillDirectory, params: FinalParam[]): SkillDirectory` — pure;
+  returns a NEW SkillDirectory whose `SKILL.md` frontmatter `metadata:` block carries
+  `skillwright-inputs: '<json of {name,type,required}[]>'` (replacing an existing line if the semantic
+  distiller already emitted one, inserting after `version:` otherwise). Never throws on a SKILL.md
+  without frontmatter — returns the skill unchanged plus an injected minimal frontmatter is NOT
+  attempted (foreign artifact: pass through untouched, callers still export something loadable).
+- Panel: entering `script` with `skill`+`params` → `applyParamsToSkill` → `advance({kind:"scripted"})`.
+
+- [ ] **Step 1: Write the failing test** — semantic-shaped SKILL.md (existing `skillwright-inputs` line replaced), zero-LLM-shaped SKILL.md (line inserted into `metadata:`), frontmatter-less SKILL.md (unchanged), other files untouched, input skill not mutated.
+- [ ] **Step 2: Run — expect FAIL.**
+- [ ] **Step 3: Implement + export from shared index; wire panel `script` stage.**
+- [ ] **Step 4: Run — expect PASS; full suite.**
+- [ ] **Step 5: Commit.**
+
 ### Task 6.1: File-System-Access writer + handle persistence
 
 **Files:**
