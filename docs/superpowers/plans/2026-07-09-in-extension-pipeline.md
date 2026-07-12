@@ -407,6 +407,34 @@ describe("fs-access export", () => {
 
 ## Phase 7 — Verify + CDP fidelity upgrades
 
+### Task 7.0: Capture the modifiers (added 2026-07-12 — plan gap found during 7.1)
+
+**Gap — a REAL silent wrong-replay bug, not just a missing feature.** Task 7.1 specifies a
+`modifierMask(["Ctrl","Shift"]) → 10` builder, but **nothing upstream ever records a modifier**.
+`shouldCaptureKey` (capture.ts:51) deliberately captures ANY key pressed with Ctrl/Meta/Alt — that's
+the keyboard-shortcut case, the whole reason the branch exists — and then `buildCaptureStep` stores
+only `step.key`. So **Cmd+S records as a bare `"s"`**, `Step`/`ReplayStep` have no modifier field to
+carry, and both drivers (`playwright-driver.ts:106` `loc.press(step.key)`, `relay-client.ts` keydown)
+replay it as a plain character keypress — typing an "s" into the page instead of saving. Same class
+as the earlier `<select>`/checkbox replay bugs: capture opts in, the artifact drops the payload.
+
+**Files:** `packages/extension/src/capture.ts`, `packages/extension/src/content.ts`,
+`packages/shared/src/schema.ts` (`Step.modifiers?: string[]`),
+`packages/shared/src/replay-step.ts` (`ReplayStep.modifiers?: string[]`),
+`packages/shared/src/to-replay-steps.ts` (carry it), `packages/cli/src/playwright-driver.ts`
+(`loc.press("Control+s")`). Tests: extend `key-capture.test.ts`, `to-replay-steps` coverage,
+driver test.
+
+**Interfaces:** modifiers are recorded as the canonical CDP/Playwright names `"Alt" | "Control" |
+"Meta" | "Shift"`, in that fixed order (so the mask and the Playwright chord string are both
+deterministic and a recording diff is stable).
+
+- [ ] **Step 1: Failing tests** — capture of Ctrl+S yields `{key:"s", modifiers:["Control"]}`; a plain Enter yields NO `modifiers` key (don't bloat every recording); `toReplaySteps` carries it; Playwright driver presses `"Control+s"`.
+- [ ] **Step 2: Run — expect FAIL.**
+- [ ] **Step 3: Implement** across capture → schema → ReplayStep → both drivers.
+- [ ] **Step 4: Run — expect PASS; full suite.**
+- [ ] **Step 5: Commit.**
+
 ### Task 7.1: Key/typing/file fidelity in the relay path
 
 **Files:**
