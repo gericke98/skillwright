@@ -1,13 +1,17 @@
 /** Side panel controller — thin UI over the background worker's state. */
-import type { Recording } from "@skillwright/shared";
+import type { Recording, SkillDirectory } from "@skillwright/shared";
 import { applyParamsToSkill, parameterize } from "@skillwright/shared";
 import type { PanelMessage, StatusMessage, SavedRecordingMessage, RelayStatusMessage } from "./messages";
 import { advance, initialState, type PipelineState } from "./pipeline/state";
 import { renderStages } from "./pipeline/stage-view";
 import { renderParamApproval } from "./pipeline/param-view";
+import { renderExport, renderExportStatus } from "./pipeline/export-view";
 import { readLlmSettings } from "./llm/settings";
 import { createFetchBackend } from "./llm/fetch-backend";
 import { runDistill } from "./pipeline/run-distill";
+import { runExport } from "./pipeline/run-export";
+import { pickAndPersistHandle, restoreHandle, saveSkillToFolder } from "./export/fs-access";
+import { downloadSkill } from "./export/downloads";
 
 /** Save a finished recording as a file with a proper name (panel has a window). */
 function downloadRecording(msg: SavedRecordingMessage): void {
@@ -77,6 +81,7 @@ relayConnect.addEventListener("click", () => {
 const stagesEl = document.getElementById("stages") as HTMLDivElement;
 const distillNoticeEl = document.getElementById("distill-notice") as HTMLDivElement;
 const parameterizeEl = document.getElementById("stage-parameterize") as HTMLDivElement;
+const exportEl = document.getElementById("stage-export") as HTMLDivElement;
 
 let pipeline: PipelineState = initialState();
 let distillStarted = false;
@@ -136,10 +141,37 @@ async function runParameterizeStage(recordingToParameterize: Recording): Promise
   }
 }
 
+/** Export stage: the button click is the required user gesture for
+ * `showDirectoryPicker`, so `runExport` is called straight from the handler
+ * (never behind an await). Tiering + fallback policy lives in
+ * pipeline/run-export.ts; this only injects the real browser deps. */
+function renderExportStage(skill: SkillDirectory): void {
+  renderExport(exportEl, skill, {
+    onExport: (finalSkill) => {
+      renderExportStatus(exportEl, "Saving…");
+      void runExport(finalSkill, {
+        restore: () => restoreHandle(),
+        pick: () => pickAndPersistHandle(),
+        save: saveSkillToFolder,
+        download: downloadSkill,
+      }).then((outcome) => {
+        renderExportStatus(
+          exportEl,
+          outcome.tier === "folder" ? "Saved to your skill folder." : outcome.reason,
+        );
+        // Export is complete either way — a downloads fallback still produced
+        // the artifact, so the pipeline advances to Verify.
+        setPipeline(advance(pipeline, { kind: "exported" }));
+      });
+    },
+  });
+}
+
 function setPipeline(next: PipelineState): void {
   const enteringDistill = next.stage === "distill" && pipeline.stage !== "distill";
   const enteringParameterize = next.stage === "parameterize" && pipeline.stage !== "parameterize";
   const enteringScript = next.stage === "script" && pipeline.stage !== "script";
+  const enteringExport = next.stage === "export" && pipeline.stage !== "export";
   pipeline = next;
   renderStages(stagesEl, pipeline.stage, pipeline.error);
   if (pipeline.stage !== "distill") {
@@ -163,6 +195,14 @@ function setPipeline(next: PipelineState): void {
     queueMicrotask(() => {
       setPipeline(advance(pipeline, { kind: "scripted", skill: applyParamsToSkill(skill, params) }));
     });
+  }
+  if (enteringExport && pipeline.skill) {
+    renderExportStage(pipeline.skill);
+  } else if (pipeline.stage === "record") {
+    // Only a reset clears the export view. Advancing export -> verify must
+    // NOT wipe it: the outcome line ("Saved to your skill folder", or the
+    // downloads-fallback reason) is the user's only receipt.
+    exportEl.innerHTML = "";
   }
 }
 
