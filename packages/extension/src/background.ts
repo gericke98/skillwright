@@ -7,7 +7,9 @@
 import { NetworkCapturer } from "@skillwright/shared";
 import { RecordingSession } from "./session";
 import { makeDebuggerLifecycle, type DebuggerLifecycleDbg } from "./debugger-lifecycle";
-import { connectRelay } from "./relay-client";
+import { connectRelay, tabSend } from "./relay-client";
+import { verifySkill } from "./verify/runner";
+import type { ReplayStep } from "@skillwright/shared";
 import type {
   PanelMessage,
   CaptureMessage,
@@ -15,6 +17,7 @@ import type {
   RecStateMessage,
   SavedRecordingMessage,
   RelayStatusMessage,
+  VerifyResultMessage,
 } from "./messages";
 
 const session = new RecordingSession();
@@ -92,6 +95,38 @@ async function startRelay(port: number, token: string): Promise<void> {
   }
 }
 
+/**
+ * Verify the compiled skill against the live tab. Runs here (not in the panel)
+ * because only the worker holds `chrome.debugger` + tab resolution.
+ *
+ * Always detaches: leaving the debugger attached strands Chrome's "being
+ * debugged" infobar over the user's tab after Verify is long done.
+ */
+async function runVerify(steps: ReplayStep[], confirmDestructive: boolean): Promise<void> {
+  const reply = (msg: VerifyResultMessage) => chrome.runtime.sendMessage(msg).catch(() => {});
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id == null || !chrome.debugger) {
+    void reply({ kind: "verifyresult", results: [], error: "no active tab to verify against" });
+    return;
+  }
+  const tabId = tab.id;
+  try {
+    await chrome.debugger.attach({ tabId }, "1.3").catch(() => {
+      /* already attached (e.g. network capture) — reuse it */
+    });
+    const results = await verifySkill(steps, { tabId, confirmDestructive, send: tabSend(tabId) });
+    void reply({ kind: "verifyresult", results });
+  } catch (e) {
+    void reply({ kind: "verifyresult", results: [], error: String(e) });
+  } finally {
+    // Only detach if this verify owns the attachment: a recording in flight
+    // has the debugger attached for network capture and still needs it.
+    if (debuggerLifecycle?.activeTabId() !== tabId) {
+      await chrome.debugger.detach({ tabId }).catch(() => {});
+    }
+  }
+}
+
 function broadcastRecState(recording: boolean): void {
   const msg: RecStateMessage = { kind: "recstate", recording };
   chrome.tabs.query({}, (tabs) => {
@@ -147,6 +182,9 @@ chrome.runtime.onMessage.addListener(
         return true;
       case "connectRelay":
         void startRelay(msg.port, msg.token);
+        break;
+      case "verify":
+        void runVerify(msg.steps, msg.confirmDestructive === true);
         break;
       case "step":
         if (session.isRecording) {

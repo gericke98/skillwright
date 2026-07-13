@@ -1,7 +1,14 @@
 /** Side panel controller — thin UI over the background worker's state. */
 import type { Recording, SkillDirectory } from "@skillwright/shared";
-import { applyParamsToSkill, parameterize } from "@skillwright/shared";
-import type { PanelMessage, StatusMessage, SavedRecordingMessage, RelayStatusMessage } from "./messages";
+import { applyParamsToSkill, parameterize, toReplaySteps } from "@skillwright/shared";
+import type {
+  PanelMessage,
+  StatusMessage,
+  SavedRecordingMessage,
+  RelayStatusMessage,
+  VerifyResultMessage,
+} from "./messages";
+import { renderVerify, renderVerifyResults } from "./pipeline/verify-view";
 import { advance, initialState, type PipelineState } from "./pipeline/state";
 import { renderStages } from "./pipeline/stage-view";
 import { renderParamApproval } from "./pipeline/param-view";
@@ -82,6 +89,7 @@ const stagesEl = document.getElementById("stages") as HTMLDivElement;
 const distillNoticeEl = document.getElementById("distill-notice") as HTMLDivElement;
 const parameterizeEl = document.getElementById("stage-parameterize") as HTMLDivElement;
 const exportEl = document.getElementById("stage-export") as HTMLDivElement;
+const verifyEl = document.getElementById("stage-verify") as HTMLDivElement;
 
 let pipeline: PipelineState = initialState();
 let distillStarted = false;
@@ -167,11 +175,23 @@ function renderExportStage(skill: SkillDirectory): void {
   });
 }
 
+/** Verify stage: the replay runs in the background worker (only it holds
+ * chrome.debugger); the panel just asks and renders what comes back. */
+function renderVerifyStage(recordingToVerify: Recording): void {
+  renderVerify(verifyEl, {
+    onVerify: ({ confirmDestructive }) => {
+      renderVerifyResults(verifyEl, [], undefined);
+      void send({ kind: "verify", steps: toReplaySteps(recordingToVerify), confirmDestructive });
+    },
+  });
+}
+
 function setPipeline(next: PipelineState): void {
   const enteringDistill = next.stage === "distill" && pipeline.stage !== "distill";
   const enteringParameterize = next.stage === "parameterize" && pipeline.stage !== "parameterize";
   const enteringScript = next.stage === "script" && pipeline.stage !== "script";
   const enteringExport = next.stage === "export" && pipeline.stage !== "export";
+  const enteringVerify = next.stage === "verify" && pipeline.stage !== "verify";
   pipeline = next;
   renderStages(stagesEl, pipeline.stage, pipeline.error);
   if (pipeline.stage !== "distill") {
@@ -204,6 +224,11 @@ function setPipeline(next: PipelineState): void {
     // downloads-fallback reason) is the user's only receipt.
     exportEl.innerHTML = "";
   }
+  if (enteringVerify && pipeline.recording) {
+    renderVerifyStage(pipeline.recording);
+  } else if (pipeline.stage === "record") {
+    verifyEl.innerHTML = "";
+  }
 }
 
 setPipeline(pipeline);
@@ -223,12 +248,13 @@ function onRecordingSaved(msg: SavedRecordingMessage): void {
 // Live status pushes, the finished-recording download (+ pipeline feed), and
 // relay status.
 chrome.runtime.onMessage.addListener(
-  (msg: StatusMessage | SavedRecordingMessage | RelayStatusMessage) => {
+  (msg: StatusMessage | SavedRecordingMessage | RelayStatusMessage | VerifyResultMessage) => {
     if (msg?.kind === "status") render(msg);
     else if (msg?.kind === "recording") {
       downloadRecording(msg);
       onRecordingSaved(msg);
     } else if (msg?.kind === "relaystatus") relayStatus.textContent = msg.status;
+    else if (msg?.kind === "verifyresult") renderVerifyResults(verifyEl, msg.results, msg.error);
   },
 );
 

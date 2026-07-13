@@ -145,15 +145,27 @@ function snapshotExpression(): string {
   })()`;
 }
 
-async function evaluate(tabId: number, expression: string): Promise<unknown> {
-  const res = (await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
-    expression,
-    returnByValue: true,
-  })) as { result?: { value?: unknown } };
+/**
+ * One CDP command against an attached target. Injected rather than reaching for
+ * `chrome.debugger` inline, so the step executor below is unit-testable AND
+ * reusable: the in-extension Verify runner drives the SAME executor, instead of
+ * growing a second, untested copy of the replay semantics.
+ */
+export type CdpSend = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+
+/** A `CdpSend` bound to a debugger-attached tab. */
+export function tabSend(tabId: number): CdpSend {
+  return (method, params) => chrome.debugger.sendCommand({ tabId }, method, params);
+}
+
+async function evaluate(send: CdpSend, expression: string): Promise<unknown> {
+  const res = (await send("Runtime.evaluate", { expression, returnByValue: true })) as {
+    result?: { value?: unknown };
+  };
   return res?.result?.value;
 }
 
-interface PerformInput {
+export interface PerformInput {
   action: string;
   selector: string;
   value?: string;
@@ -256,12 +268,12 @@ export function keyDispatchEvents(key: string, modifiers: string[] = []): KeyDis
 }
 
 export async function performStep(
-  tabId: number,
   cmd: PerformInput,
+  send: CdpSend,
 ): Promise<{ ok: boolean; error?: string; url?: string; aria?: string }> {
   try {
     if (cmd.action === "snapshot") {
-      const raw = await evaluate(tabId, snapshotExpression());
+      const raw = await evaluate(send, snapshotExpression());
       try {
         const s = JSON.parse(String(raw)) as { url?: string; aria?: string };
         return { ok: true, url: s.url ?? "", aria: s.aria ?? "" };
@@ -270,7 +282,7 @@ export async function performStep(
       }
     }
     if (cmd.action === "click") {
-      const info = (await evaluate(tabId, coordsExpression(cmd.selector))) as {
+      const info = (await evaluate(send, coordsExpression(cmd.selector))) as {
         found: boolean;
         x?: number;
         y?: number;
@@ -281,20 +293,13 @@ export async function performStep(
       if (!info.found) return { ok: false, error: "element not found" };
       const { x, y } = info as { x: number; y: number };
       // Proper trusted-click sequence: move, press (button held), release (none held).
-      const send = (type: string, buttons: number) =>
-        chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", {
-          type,
-          x,
-          y,
-          button: "left",
-          buttons,
-          clickCount: 1,
-        });
-      await send("mouseMoved", 0);
-      await send("mousePressed", 1);
-      await send("mouseReleased", 0);
+      const mouse = (type: string, buttons: number) =>
+        send("Input.dispatchMouseEvent", { type, x, y, button: "left", buttons, clickCount: 1 });
+      await mouse("mouseMoved", 0);
+      await mouse("mousePressed", 1);
+      await mouse("mouseReleased", 0);
       // Self-verify: for the delete flow, a working click removes the element.
-      const stillThere = (await evaluate(tabId, existsExpression(cmd.selector))) === true;
+      const stillThere = (await evaluate(send, existsExpression(cmd.selector))) === true;
       if (stillThere) {
         return { ok: false, error: `clicked but element persists — diag ${JSON.stringify(info)}` };
       }
@@ -302,23 +307,20 @@ export async function performStep(
     }
     if (cmd.action === "change" || cmd.action === "input" || cmd.action === "select") {
       const value = cmd.value ?? "";
-      const kind = (await evaluate(tabId, elementKindExpression(cmd.selector))) as string | null;
+      const kind = (await evaluate(send, elementKindExpression(cmd.selector))) as string | null;
       if (kind === null) return { ok: false, error: "element not found" };
 
       if (kind === "file") {
         // A file input can only be set through CDP: page JS assigning .value
         // throws SecurityError. Resolve the element BY REFERENCE (objectId,
         // not by value) and hand that to DOM.setFileInputFiles.
-        const res = (await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
+        const res = (await send("Runtime.evaluate", {
           expression: elementRefExpression(cmd.selector),
           returnByValue: false,
         })) as { result?: { objectId?: string } };
         const objectId = res?.result?.objectId;
         if (!objectId) return { ok: false, error: "element not found" };
-        await chrome.debugger.sendCommand({ tabId }, "DOM.setFileInputFiles", {
-          objectId,
-          files: [value],
-        });
+        await send("DOM.setFileInputFiles", { objectId, files: [value] });
         return { ok: true };
       }
 
@@ -326,21 +328,21 @@ export async function performStep(
         // TYPE it: Input.insertText produces real input events. A raw .value
         // assignment is invisible to React's value tracker, so a JS-filled
         // form submits empty — the exact failure the relay used to have.
-        const focused = (await evaluate(tabId, focusAndSelectAllExpression(cmd.selector))) === true;
+        const focused = (await evaluate(send, focusAndSelectAllExpression(cmd.selector))) === true;
         if (!focused) return { ok: false, error: "element not found" };
-        await chrome.debugger.sendCommand({ tabId }, "Input.insertText", { text: value });
+        await send("Input.insertText", { text: value });
         return { ok: true };
       }
 
       // toggle / select: state, not text — the JS path is correct for these.
-      const ok = (await evaluate(tabId, fillExpression(cmd.selector, value))) === true;
+      const ok = (await evaluate(send, fillExpression(cmd.selector, value))) === true;
       return { ok, error: ok ? undefined : "element not found" };
     }
     if (cmd.action === "keydown") {
-      const focused = (await evaluate(tabId, focusExpression(cmd.selector))) === true;
+      const focused = (await evaluate(send, focusExpression(cmd.selector))) === true;
       if (!focused) return { ok: false, error: "element not found" };
       for (const event of keyDispatchEvents(cmd.key || "Enter", cmd.modifiers)) {
-        await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", event);
+        await send("Input.dispatchKeyEvent", event);
       }
       return { ok: true };
     }
@@ -380,7 +382,7 @@ export async function connectRelay(
       onStatus(msg.ok ? "paired" : "rejected");
       if (!msg.ok) ws.close();
     } else if (msg.kind === "perform") {
-      const res = await performStep(tabId, msg as PerformInput);
+      const res = await performStep(msg as PerformInput, tabSend(tabId));
       ws.send(
         JSON.stringify({
           kind: "result",

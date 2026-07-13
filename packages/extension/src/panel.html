@@ -20,6 +20,10 @@
       .param-secret { background: #fff6f6; }
       .stage-notice { margin: 6px 0 0; font-size: 12px; color: #8a6d3b; }
       .stage-notice-detail { margin: 2px 0 0; font-size: 11px; color: #999; }
+      .verify-list { list-style: none; padding: 0; margin: 6px 0 0; font-size: 12px; }
+      .verify-ok { color: #2e7d32; }
+      .verify-fail { color: #c0392b; }
+      .verify-skipped-destructive { color: #999; }
     </style>
   </head>
   <body>
@@ -45,6 +49,7 @@
     <div id="distill-notice"></div>
     <div id="stage-parameterize"></div>
     <div id="stage-export"></div>
+    <div id="stage-verify"></div>
 
     <script type="module" src="./panel.ts"></script>
   </body>
