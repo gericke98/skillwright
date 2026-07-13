@@ -9,9 +9,15 @@ const DEFAULT_MAX_ATTEMPTS = 1;
 const ERROR_BODY_TRUNCATE = 500;
 
 export interface FetchBackendConfig {
-  provider: "anthropic" | "openai";
+  provider: "anthropic" | "openai" | "custom";
   apiKey: string;
   model: string;
+  /**
+   * Overrides the endpoint. Required for `custom` — the user's OWN gateway
+   * (OpenRouter, LiteLLM, Azure, a corporate proxy) or a local model. We run no
+   * gateway; this is how you bring one.
+   */
+  baseUrl?: string;
   /** Injected in tests; defaults to global fetch. */
   fetchImpl?: typeof fetch;
 }
@@ -59,7 +65,7 @@ async function readErrorBody(res: Response, apiKey: string): Promise<string> {
  */
 function makeAnthropicGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch) {
   return async (prompt: string): Promise<string> => {
-    const res = await fetchImpl(ANTHROPIC_ENDPOINT, {
+    const res = await fetchImpl(cfg.baseUrl || ANTHROPIC_ENDPOINT, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -87,14 +93,25 @@ function makeAnthropicGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch)
   };
 }
 
+/**
+ * The OpenAI chat-completions wire format — used for `openai` AND for `custom`,
+ * because it's the de-facto standard every gateway and local runtime speaks
+ * (OpenRouter, LiteLLM, Azure, vLLM, Ollama, LM Studio). One shape covers them
+ * all; the user only supplies the URL.
+ */
 function makeOpenAiGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch) {
+  const endpoint = cfg.baseUrl || OPENAI_ENDPOINT;
+  const httpLabel = cfg.provider === "custom" ? "LLM endpoint API" : "OpenAI API";
+  const shapeLabel = cfg.provider === "custom" ? "LLM endpoint" : "OpenAI";
   return async (prompt: string): Promise<string> => {
-    const res = await fetchImpl(OPENAI_ENDPOINT, {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    // A local model (Ollama, LM Studio) has no key — sending `Bearer ` with an
+    // empty key makes some servers reject the request outright.
+    if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
+
+    const res = await fetchImpl(endpoint, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        Authorization: `Bearer ${cfg.apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model: cfg.model,
         messages: [{ role: "user", content: prompt }],
@@ -102,13 +119,13 @@ function makeOpenAiGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch) {
     });
     if (!res.ok) {
       throw new Error(
-        `OpenAI API error ${res.status} ${res.statusText}: ${await readErrorBody(res, cfg.apiKey)}`,
+        `${httpLabel} error ${res.status} ${res.statusText}: ${await readErrorBody(res, cfg.apiKey)}`,
       );
     }
     const data = (await res.json()) as OpenAiResponse;
     const content = data.choices?.[0]?.message?.content;
     if (typeof content !== "string") {
-      throw new Error("OpenAI response missing choices[0].message.content");
+      throw new Error(`${shapeLabel} response missing choices[0].message.content`);
     }
     return content;
   };
@@ -124,6 +141,7 @@ function makeOpenAiGenerate(cfg: FetchBackendConfig, fetchImpl: typeof fetch) {
  */
 export function createFetchBackend(cfg: FetchBackendConfig): LlmBackend {
   const fetchImpl = cfg.fetchImpl ?? fetch;
+  // `custom` rides the OpenAI shape — see makeOpenAiGenerate.
   const generate =
     cfg.provider === "anthropic" ? makeAnthropicGenerate(cfg, fetchImpl) : makeOpenAiGenerate(cfg, fetchImpl);
 

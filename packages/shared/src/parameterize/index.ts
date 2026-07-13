@@ -96,3 +96,21 @@ export async function parameterize(recording: Recording, backend: LlmBackend): P
   const critique = await inferParamCritique(recording, proposal, backend);
   return reconcileParams(proposal, critique, secretNamesOf(recording, proposal));
 }
+
+/**
+ * Parameterization with NO model: no proposer, no critic — just the
+ * deterministic secret floor.
+ *
+ * This is the degraded path for a user without an API key. It costs them the
+ * smart part (recognizing that `INV-2042` is a reusable invoice number) but
+ * NOT the safety part: a redacted secret still becomes a required, valueless,
+ * string parameter, because that rule is code, not a prompt. Losing your
+ * parameter names because you have no key is an inconvenience; silently baking
+ * a redaction placeholder in where a password belongs is a broken skill.
+ *
+ * Pure and total — the same guarantees `reconcileParams` already carries.
+ */
+export function parameterizeWithoutLlm(recording: Recording): FinalParam[] {
+  const noCritique: Critique = { removals: [], additions: [], typeFixes: [] };
+  return reconcileParams([], noCritique, secretNamesOf(recording, []));
+}

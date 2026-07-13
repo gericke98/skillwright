@@ -24,6 +24,10 @@
       .verify-ok { color: #2e7d32; }
       .verify-fail { color: #c0392b; }
       .verify-skipped-destructive { color: #999; }
+      summary { cursor: pointer; padding: 4px 0; }
+      .hint { font-size: 12px; color: #666; margin: 4px 0 8px; }
+      #llm-settings select { width: 100%; box-sizing: border-box; padding: 6px; }
+      #llm-settings label { display: block; margin-bottom: 8px; font-size: 12px; color: #555; }
     </style>
   </head>
   <body>
@@ -34,6 +38,18 @@
     </label>
     <button id="toggle">Start recording</button>
     <p class="count"><span id="count">0</span> steps captured <span id="live"></span></p>
+
+    <hr />
+    <details id="settings-section">
+      <summary><b>LLM settings</b></summary>
+      <p class="hint">
+        Your key stays in this browser and goes only to the provider you choose — skillwright runs no
+        gateway. Pick <b>Custom</b> to use your own (OpenRouter, LiteLLM, a corporate proxy) or a local
+        model like Ollama, which needs no key at all. Without a key the pipeline still runs; you just
+        get plainer descriptions and only secrets become parameters.
+      </p>
+      <div id="llm-settings"></div>
+    </details>
 
     <hr />
     <h1>Replay relay</h1>

@@ -52,6 +52,7 @@ export {
 } from "./distill/sanitize";
 export {
   parameterize,
+  parameterizeWithoutLlm,
   secretNamesOf,
   inferParamCritique,
   reconcileParams,
