@@ -1,11 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import type { Recording } from "@skillwright/shared";
+import { type Recording, toReplaySteps, applyInputs } from "@skillwright/shared";
 import { defaultLibraryDir } from "./paths";
-import { toReplaySteps } from "./to-replay-steps";
 import { runSkill, type ReplayResult } from "./replay";
-import { applyInputs } from "./apply-inputs";
 import { PlaywrightStepDriver } from "./playwright-driver";
 import { applyPromotedOverlay, buildHealer, confirmCleanRun, makeOnHeal } from "./heal-wiring";
 

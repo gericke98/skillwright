@@ -66,11 +66,38 @@ function accessibleName(el: Element): string | undefined {
  * the redacted field value. This is the pure heart of capture; the content
  * script's event listeners are a thin shell that calls it.
  */
+/** Modifier flags as they arrive on a KeyboardEvent. */
+export interface ModifierFlags {
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+}
+
+/**
+ * The modifiers held during a keydown, as canonical CDP/Playwright names in a
+ * FIXED order — so the CDP bitmask and the Playwright chord string ("Control+s")
+ * are both deterministic, and a recording diff is stable.
+ *
+ * Without this, `shouldCaptureKey` opts a Cmd+S shortcut INTO the recording and
+ * then the step keeps only `key: "s"` — replay would type an "s" into the page
+ * instead of saving.
+ */
+export function modifiersOf(event: ModifierFlags): string[] {
+  const mods: string[] = [];
+  if (event.altKey) mods.push("Alt");
+  if (event.ctrlKey) mods.push("Control");
+  if (event.metaKey) mods.push("Meta");
+  if (event.shiftKey) mods.push("Shift");
+  return mods;
+}
+
 export function buildCaptureStep(
   el: Element,
   action: string,
   now: () => number = () => Date.now(),
   key?: string,
+  modifiers?: ModifierFlags,
 ): Step {
   const label = accessibleName(el);
   const step: Step = {
@@ -106,7 +133,13 @@ export function buildCaptureStep(
     }
   }
 
-  if (action === "keydown" && key) step.key = key;
+  if (action === "keydown" && key) {
+    step.key = key;
+    // Only set when non-empty: a plain Enter shouldn't carry a dead field in
+    // every recording.
+    const mods = modifiers ? modifiersOf(modifiers) : [];
+    if (mods.length > 0) step.modifiers = mods;
+  }
 
   return step;
 }

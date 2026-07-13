@@ -1,4 +1,4 @@
-import { completeWithRepair, type LlmBackend, type SchemaSpec } from "./backend";
+import { completeWithRepair, type LlmBackend, type SchemaSpec } from "@skillwright/shared";
 
 const DEFAULT_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-5";

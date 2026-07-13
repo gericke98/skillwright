@@ -12,5 +12,8 @@
   "scripts": {
     "build": "tsc --build",
     "test": "vitest run"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
   }
 }

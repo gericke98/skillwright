@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { SchemaExhaustedError, type SchemaSpec } from "../src/llm/backend";
+import { SchemaExhaustedError, type SchemaSpec } from "@skillwright/shared";
 import { MockBackend } from "../src/llm/mock-backend";
 import { createAgentCliBackend } from "../src/llm/agent-cli-backend";
 import { createApiBackend } from "../src/llm/api-backend";

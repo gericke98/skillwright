@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { MultiSegmentError, type Recording } from "@skillwright/shared";
-import { distill } from "./distill";
+import {
+  MultiSegmentError,
+  type Recording,
+  distill,
+  distillSemantic,
+  MissingInputError,
+} from "@skillwright/shared";
 import { writeSkillDirectory } from "./write-skill";
 import { defaultLibraryDir } from "./paths";
 import { promote } from "./quarantine";
 import { installSkill, listSkills, syncInstalls, type InstallScope } from "./install";
-import { MissingInputError } from "./apply-inputs";
 import { parseTimeoutMs } from "./run-args";
 import { runDoctor, type DoctorProbes } from "./doctor";
 
@@ -33,7 +37,6 @@ async function cmdDistill(argv: string[]): Promise<void> {
   try {
     let skill;
     if (semantic) {
-      const { distillSemantic } = await import("./distill/semantic");
       const { createDefaultBackend } = await import("./llm/index");
       const backend = createDefaultBackend();
       process.stdout.write(`Distilling with ${backend.name}...\n`);

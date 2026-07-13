@@ -6,6 +6,40 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **The whole pipeline now runs inside the extension.** The side panel takes a
+  recording through distill → parameterize → generate script → export → verify
+  without the CLI: BYO-key LLM settings, a parameter-approval gate, tiered export
+  (File System Access into a folder you pick, `chrome.downloads` as fallback), and
+  an in-tab Verify that replays the skill so you can watch it work. Destructive
+  steps are skipped during Verify unless explicitly confirmed.
+- **Parameterization engine** — proposer → critic → deterministic reconcile, with
+  a secret floor that is code, not a prompt: a secret is forced to a required,
+  string-typed, valueless parameter no matter what the model proposes, and the
+  approval UI won't let it be unticked.
+- `applyParamsToSkill` bakes the approved inputs into SKILL.md as
+  `skillwright-inputs` frontmatter — the contract `--input` and the MCP facade read.
+
+### Fixed
+
+- **Keyboard shortcuts replayed as plain typing.** Capture deliberately records any
+  key held with Ctrl/Meta/Alt, but kept only the key — so a captured Cmd+S replayed
+  by *typing an "s" into the page*. Modifiers now travel capture → recording →
+  both replay drivers.
+- **CDP key fidelity in the relay** — physical `code` (`KeyS`, not `s`, which no
+  app recognizes), Enter carries `text: "\r"` (without it, forms don't submit), and
+  a modified key's text is dropped so Ctrl+S doesn't both fire the shortcut and
+  type a character.
+- **Text fields are typed, not assigned.** The relay set `.value` from page JS,
+  which React's value tracker ignores — so JS-filled forms submitted empty. It now
+  types through `Input.insertText`.
+- **File uploads work over the relay** (via `DOM.setFileInputFiles`), closing the
+  documented "use `--cdp` for uploads" limitation.
+- A picked export folder is no longer lost when the browser refuses to persist the
+  handle (private browsing / blocked storage) — persisting is an optimization, not
+  a requirement for exporting.
+
 ## [0.1.1] - 2026-07-08
 
 Published to npm — `npm i -g skillwright` is live.

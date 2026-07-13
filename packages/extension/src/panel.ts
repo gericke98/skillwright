@@ -1,5 +1,24 @@
 /** Side panel controller — thin UI over the background worker's state. */
-import type { PanelMessage, StatusMessage, SavedRecordingMessage, RelayStatusMessage } from "./messages";
+import type { Recording, SkillDirectory } from "@skillwright/shared";
+import { applyParamsToSkill, parameterize, toReplaySteps } from "@skillwright/shared";
+import type {
+  PanelMessage,
+  StatusMessage,
+  SavedRecordingMessage,
+  RelayStatusMessage,
+  VerifyResultMessage,
+} from "./messages";
+import { renderVerify, renderVerifyResults } from "./pipeline/verify-view";
+import { advance, initialState, type PipelineState } from "./pipeline/state";
+import { renderStages } from "./pipeline/stage-view";
+import { renderParamApproval } from "./pipeline/param-view";
+import { renderExport, renderExportStatus } from "./pipeline/export-view";
+import { readLlmSettings } from "./llm/settings";
+import { createFetchBackend } from "./llm/fetch-backend";
+import { runDistill } from "./pipeline/run-distill";
+import { runExport } from "./pipeline/run-export";
+import { pickAndPersistHandle, restoreHandle, saveSkillToFolder } from "./export/fs-access";
+import { downloadSkill } from "./export/downloads";
 
 /** Save a finished recording as a file with a proper name (panel has a window). */
 function downloadRecording(msg: SavedRecordingMessage): void {
@@ -58,12 +77,184 @@ relayConnect.addEventListener("click", () => {
   relayStatus.textContent = "connecting…";
 });
 
-// Live status pushes, the finished-recording download, and relay status.
+// ---------------------------------------------------------------------------
+// Pipeline strip + parameter-approval view (Task 5.2/5.3). Rendering itself
+// lives in pipeline/stage-view.ts + pipeline/param-view.ts (pure,
+// unit-tested); panel.ts only holds the PipelineState, calls advance(), and
+// delegates to those renderers. Distill orchestration itself
+// (recording -> SkillDirectory, with zero-LLM fallback) lives in the
+// unit-tested pipeline/run-distill.ts; panel.ts only wires it to the stage
+// transition and DOM below.
+const stagesEl = document.getElementById("stages") as HTMLDivElement;
+const distillNoticeEl = document.getElementById("distill-notice") as HTMLDivElement;
+const parameterizeEl = document.getElementById("stage-parameterize") as HTMLDivElement;
+const exportEl = document.getElementById("stage-export") as HTMLDivElement;
+const verifyEl = document.getElementById("stage-verify") as HTMLDivElement;
+
+let pipeline: PipelineState = initialState();
+let distillStarted = false;
+let parameterizeStarted = false;
+
+/** Non-fatal notice for the zero-LLM degraded path: never blocks the
+ * pipeline, never prints the raw provider error as the primary message, and
+ * only ever sets text via `textContent` — `llmError` is provider-authored
+ * text and must never be interpreted as HTML. */
+function renderDistillNotice(llmError: string): void {
+  distillNoticeEl.innerHTML = "";
+  const primary = document.createElement("p");
+  primary.className = "stage-notice";
+  primary.textContent =
+    "This skill was compiled without AI assistance. Add an API key in settings for richer step descriptions.";
+  distillNoticeEl.appendChild(primary);
+  const detail = document.createElement("p");
+  detail.className = "stage-notice-detail";
+  detail.textContent = llmError;
+  distillNoticeEl.appendChild(detail);
+}
+
+async function runDistillStage(recordingToDistill: Recording): Promise<void> {
+  distillNoticeEl.innerHTML = "";
+  const settings = await readLlmSettings();
+  const backend = settings ? createFetchBackend(settings) : undefined;
+  const result = await runDistill(recordingToDistill, backend);
+  if (!result.usedLlm && result.llmError) {
+    // Degraded path is NON-FATAL: surface a notice, but still advance with
+    // the zero-LLM skill so parameterize runs next — never fire `failed`.
+    renderDistillNotice(result.llmError);
+  }
+  setPipeline(advance(pipeline, { kind: "distilled", skill: result.skill }));
+}
+
+async function runParameterizeStage(recordingToParameterize: Recording): Promise<void> {
+  parameterizeEl.innerHTML = "";
+  const settings = await readLlmSettings();
+  if (!settings) {
+    const prompt = document.createElement("p");
+    prompt.className = "settings-prompt";
+    prompt.textContent = "Configure an LLM provider + API key in settings before parameterizing.";
+    parameterizeEl.appendChild(prompt);
+    return;
+  }
+
+  const backend = createFetchBackend(settings);
+  try {
+    const params = await parameterize(recordingToParameterize, backend);
+    renderParamApproval(parameterizeEl, params, {
+      onApprove: (edited) => {
+        setPipeline(advance(pipeline, { kind: "parameterized", params: edited }));
+      },
+    });
+  } catch (e) {
+    setPipeline(advance(pipeline, { kind: "failed", error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+/** Export stage: the button click is the required user gesture for
+ * `showDirectoryPicker`, so `runExport` is called straight from the handler
+ * (never behind an await). Tiering + fallback policy lives in
+ * pipeline/run-export.ts; this only injects the real browser deps. */
+function renderExportStage(skill: SkillDirectory): void {
+  renderExport(exportEl, skill, {
+    onExport: (finalSkill) => {
+      renderExportStatus(exportEl, "Saving…");
+      void runExport(finalSkill, {
+        restore: () => restoreHandle(),
+        pick: () => pickAndPersistHandle(),
+        save: saveSkillToFolder,
+        download: downloadSkill,
+      }).then((outcome) => {
+        renderExportStatus(
+          exportEl,
+          outcome.tier === "folder" ? "Saved to your skill folder." : outcome.reason,
+        );
+        // Export is complete either way — a downloads fallback still produced
+        // the artifact, so the pipeline advances to Verify.
+        setPipeline(advance(pipeline, { kind: "exported" }));
+      });
+    },
+  });
+}
+
+/** Verify stage: the replay runs in the background worker (only it holds
+ * chrome.debugger); the panel just asks and renders what comes back. */
+function renderVerifyStage(recordingToVerify: Recording): void {
+  renderVerify(verifyEl, {
+    onVerify: ({ confirmDestructive }) => {
+      renderVerifyResults(verifyEl, [], undefined);
+      void send({ kind: "verify", steps: toReplaySteps(recordingToVerify), confirmDestructive });
+    },
+  });
+}
+
+function setPipeline(next: PipelineState): void {
+  const enteringDistill = next.stage === "distill" && pipeline.stage !== "distill";
+  const enteringParameterize = next.stage === "parameterize" && pipeline.stage !== "parameterize";
+  const enteringScript = next.stage === "script" && pipeline.stage !== "script";
+  const enteringExport = next.stage === "export" && pipeline.stage !== "export";
+  const enteringVerify = next.stage === "verify" && pipeline.stage !== "verify";
+  pipeline = next;
+  renderStages(stagesEl, pipeline.stage, pipeline.error);
+  if (pipeline.stage !== "distill") {
+    distillStarted = false;
+  } else if (enteringDistill && !distillStarted && pipeline.recording) {
+    distillStarted = true;
+    void runDistillStage(pipeline.recording);
+  }
+  if (pipeline.stage !== "parameterize") {
+    parameterizeStarted = false;
+    parameterizeEl.innerHTML = "";
+  } else if (enteringParameterize && !parameterizeStarted && pipeline.recording) {
+    parameterizeStarted = true;
+    void runParameterizeStage(pipeline.recording);
+  }
+  // Script stage is synchronous: bake the approved params into the artifact
+  // (skillwright-inputs frontmatter) and advance. Deferred to a microtask so
+  // the re-entrant setPipeline runs after this one has fully finished.
+  if (enteringScript && pipeline.skill && pipeline.params) {
+    const { skill, params } = pipeline;
+    queueMicrotask(() => {
+      setPipeline(advance(pipeline, { kind: "scripted", skill: applyParamsToSkill(skill, params) }));
+    });
+  }
+  if (enteringExport && pipeline.skill) {
+    renderExportStage(pipeline.skill);
+  } else if (pipeline.stage === "record") {
+    // Only a reset clears the export view. Advancing export -> verify must
+    // NOT wipe it: the outcome line ("Saved to your skill folder", or the
+    // downloads-fallback reason) is the user's only receipt.
+    exportEl.innerHTML = "";
+  }
+  if (enteringVerify && pipeline.recording) {
+    renderVerifyStage(pipeline.recording);
+  } else if (pipeline.stage === "record") {
+    verifyEl.innerHTML = "";
+  }
+}
+
+setPipeline(pipeline);
+
+/** Parse a finished recording's JSON and feed it into the pipeline reducer. A
+ * parse failure becomes a `failed` event rather than throwing — the message
+ * arrives over `chrome.runtime`, which is untyped at the wire. */
+function onRecordingSaved(msg: SavedRecordingMessage): void {
+  try {
+    const parsed = JSON.parse(msg.json) as Recording;
+    setPipeline(advance(pipeline, { kind: "recorded", recording: parsed }));
+  } catch (e) {
+    setPipeline(advance(pipeline, { kind: "failed", error: e instanceof Error ? e.message : String(e) }));
+  }
+}
+
+// Live status pushes, the finished-recording download (+ pipeline feed), and
+// relay status.
 chrome.runtime.onMessage.addListener(
-  (msg: StatusMessage | SavedRecordingMessage | RelayStatusMessage) => {
+  (msg: StatusMessage | SavedRecordingMessage | RelayStatusMessage | VerifyResultMessage) => {
     if (msg?.kind === "status") render(msg);
-    else if (msg?.kind === "recording") downloadRecording(msg);
-    else if (msg?.kind === "relaystatus") relayStatus.textContent = msg.status;
+    else if (msg?.kind === "recording") {
+      downloadRecording(msg);
+      onRecordingSaved(msg);
+    } else if (msg?.kind === "relaystatus") relayStatus.textContent = msg.status;
+    else if (msg?.kind === "verifyresult") renderVerifyResults(verifyEl, msg.results, msg.error);
   },
 );
 

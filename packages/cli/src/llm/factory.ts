@@ -1,6 +1,6 @@
 import { createAgentCliBackend, type AgentCliOptions } from "./agent-cli-backend";
 import { createApiBackend } from "./api-backend";
-import type { LlmBackend } from "./backend";
+import type { LlmBackend } from "@skillwright/shared";
 
 export interface DefaultBackendOptions {
   /** Environment to read SKILLWRIGHT_API_KEY from (default: process.env). */

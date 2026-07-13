@@ -37,6 +37,14 @@ function existsExpression(selector: string): string {
   })()`;
 }
 
+/** Expression returning the element ITSELF (for `returnByValue: false` → objectId). */
+export function elementRefExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    return resolveElement(${JSON.stringify(selector)}, document);
+  })()`;
+}
+
 /** Expression that focuses `selector`; returns true on success. */
 function focusExpression(selector: string): string {
   return `(() => {
@@ -56,8 +64,8 @@ export function fillExpression(selector: string, value: string): string {
     if (!el) return false;
     el.focus();
     // A file input can't be set from page JS (assigning .value throws a
-    // SecurityError) — the relay can't upload files in v1; use the --cdp path,
-    // which drives setInputFiles. Fail cleanly rather than throwing.
+    // SecurityError). performStep routes files to DOM.setFileInputFiles before
+    // reaching here, so this is only a defensive floor: fail, never throw.
     if (el.type === "file") return false;
     // A checkbox/radio carries its meaning in .checked, not .value — capture
     // records the boolean state ("true"/"false"), so drive .checked here.
@@ -71,6 +79,53 @@ export function fillExpression(selector: string, value: string): string {
     }
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`;
+}
+
+/**
+ * Expression: which replay strategy `selector` needs.
+ *
+ *  - "file"   → only CDP can set it (page JS assigning .value throws SecurityError)
+ *  - "toggle" → checkbox/radio: meaning lives in .checked, not text
+ *  - "select" → <select>: an option must be chosen, not typed
+ *  - "text"   → a real text field / contenteditable: TYPE it via Input.insertText
+ *               so the page sees genuine input events (React's value tracker
+ *               ignores a raw .value assignment, so JS-filled forms submit empty)
+ *  - null     → not found
+ */
+export function elementKindExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    const el = resolveElement(${JSON.stringify(selector)}, document);
+    if (!el) return null;
+    if (el.type === "file") return "file";
+    if (el.type === "checkbox" || el.type === "radio") return "toggle";
+    if (el.tagName === "SELECT") return "select";
+    return "text";
+  })()`;
+}
+
+/**
+ * Expression that focuses `selector` and SELECTS its existing content, so a
+ * following `Input.insertText` replaces the old value instead of appending to
+ * it. Returns true on success.
+ */
+export function focusAndSelectAllExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    const el = resolveElement(${JSON.stringify(selector)}, document);
+    if (!el) return false;
+    el.focus();
+    if (typeof el.select === "function") {
+      el.select();
+    } else if (el.isContentEditable) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     return true;
   })()`;
 }
@@ -90,38 +145,135 @@ function snapshotExpression(): string {
   })()`;
 }
 
-async function evaluate(tabId: number, expression: string): Promise<unknown> {
-  const res = (await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
-    expression,
-    returnByValue: true,
-  })) as { result?: { value?: unknown } };
+/**
+ * One CDP command against an attached target. Injected rather than reaching for
+ * `chrome.debugger` inline, so the step executor below is unit-testable AND
+ * reusable: the in-extension Verify runner drives the SAME executor, instead of
+ * growing a second, untested copy of the replay semantics.
+ */
+export type CdpSend = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+
+/** A `CdpSend` bound to a debugger-attached tab. */
+export function tabSend(tabId: number): CdpSend {
+  return (method, params) => chrome.debugger.sendCommand({ tabId }, method, params);
+}
+
+async function evaluate(send: CdpSend, expression: string): Promise<unknown> {
+  const res = (await send("Runtime.evaluate", { expression, returnByValue: true })) as {
+    result?: { value?: unknown };
+  };
   return res?.result?.value;
 }
 
-interface PerformInput {
+export interface PerformInput {
   action: string;
   selector: string;
   value?: string;
   key?: string;
+  modifiers?: string[];
 }
 
-const VIRTUAL_KEYS: Record<string, number> = {
-  Enter: 13,
-  Escape: 27,
-  Tab: 9,
-  ArrowUp: 38,
-  ArrowDown: 40,
-  ArrowLeft: 37,
-  ArrowRight: 39,
+/** Named keys: physical `code` + Windows virtual key code. */
+const NAMED_KEYS: Record<string, { code: string; vk: number }> = {
+  Enter: { code: "Enter", vk: 13 },
+  Escape: { code: "Escape", vk: 27 },
+  Tab: { code: "Tab", vk: 9 },
+  Backspace: { code: "Backspace", vk: 8 },
+  Delete: { code: "Delete", vk: 46 },
+  ArrowUp: { code: "ArrowUp", vk: 38 },
+  ArrowDown: { code: "ArrowDown", vk: 40 },
+  ArrowLeft: { code: "ArrowLeft", vk: 37 },
+  ArrowRight: { code: "ArrowRight", vk: 39 },
 };
 
-async function performStep(
-  tabId: number,
+export interface KeyEventFields {
+  key: string;
+  code: string;
+  windowsVirtualKeyCode: number;
+  /** Only for keys that produce input. Enter needs "\r" or forms don't submit. */
+  text?: string;
+}
+
+/**
+ * CDP key-event fields for a captured key.
+ *
+ * `code` is the PHYSICAL key ("KeyS"), distinct from the logical `key` ("s") —
+ * dispatching a shortcut with `code: "s"` (as the old table did) produces an
+ * event real apps ignore, because no such physical code exists.
+ *
+ * Total: an unrecognized key degrades to vk 0 rather than throwing.
+ */
+export function keyEventFields(key: string): KeyEventFields {
+  const named = NAMED_KEYS[key];
+  if (named) {
+    const fields: KeyEventFields = { key, code: named.code, windowsVirtualKeyCode: named.vk };
+    // Enter's text is what actually triggers form submission / newline insert.
+    if (key === "Enter") fields.text = "\r";
+    return fields;
+  }
+  if (/^[a-zA-Z]$/.test(key)) {
+    const upper = key.toUpperCase();
+    return { key, code: `Key${upper}`, windowsVirtualKeyCode: upper.charCodeAt(0) };
+  }
+  if (/^[0-9]$/.test(key)) {
+    return { key, code: `Digit${key}`, windowsVirtualKeyCode: key.charCodeAt(0) };
+  }
+  return { key, code: "", windowsVirtualKeyCode: 0 };
+}
+
+/** CDP modifier bitmask. */
+const MODIFIER_BITS: Record<string, number> = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
+
+/** OR the CDP modifier bits. Unknown names contribute nothing (never NaN). */
+export function modifierMask(modifiers: string[] = []): number {
+  return modifiers.reduce((mask, m) => mask | (MODIFIER_BITS[m] ?? 0), 0);
+}
+
+export interface KeyDispatchEvent extends KeyEventFields {
+  type: "keyDown" | "rawKeyDown" | "keyUp";
+  nativeVirtualKeyCode: number;
+  modifiers: number;
+  /** Passed straight to `chrome.debugger.sendCommand`, which takes a bag. */
+  [key: string]: unknown;
+}
+
+/**
+ * The exact `Input.dispatchKeyEvent` sequence for one captured keypress.
+ *
+ * Two rules, both load-bearing (and both what Chrome's own tooling does):
+ *  - `text` is what makes a key INSERT something. Enter without `text: "\r"`
+ *    doesn't submit a form.
+ *  - A key held with any non-Shift modifier is a SHORTCUT, not text: its
+ *    `text` must be dropped, or Ctrl+S both fires the shortcut AND types an
+ *    "s" into the page. (Shift is exempt — Shift+A is genuinely "A".)
+ *
+ * The event type follows from that: `keyDown` when the press produces text,
+ * `rawKeyDown` when it doesn't.
+ */
+export function keyDispatchEvents(key: string, modifiers: string[] = []): KeyDispatchEvent[] {
+  const fields = keyEventFields(key);
+  const mask = modifierMask(modifiers);
+  const SHIFT = 8;
+  const text = mask & ~SHIFT ? undefined : fields.text;
+  const base = {
+    ...fields,
+    text,
+    nativeVirtualKeyCode: fields.windowsVirtualKeyCode,
+    modifiers: mask,
+  };
+  return [
+    { ...base, type: text ? "keyDown" : "rawKeyDown" },
+    { ...base, type: "keyUp" },
+  ];
+}
+
+export async function performStep(
   cmd: PerformInput,
+  send: CdpSend,
 ): Promise<{ ok: boolean; error?: string; url?: string; aria?: string }> {
   try {
     if (cmd.action === "snapshot") {
-      const raw = await evaluate(tabId, snapshotExpression());
+      const raw = await evaluate(send, snapshotExpression());
       try {
         const s = JSON.parse(String(raw)) as { url?: string; aria?: string };
         return { ok: true, url: s.url ?? "", aria: s.aria ?? "" };
@@ -130,7 +282,7 @@ async function performStep(
       }
     }
     if (cmd.action === "click") {
-      const info = (await evaluate(tabId, coordsExpression(cmd.selector))) as {
+      const info = (await evaluate(send, coordsExpression(cmd.selector))) as {
         found: boolean;
         x?: number;
         y?: number;
@@ -141,37 +293,57 @@ async function performStep(
       if (!info.found) return { ok: false, error: "element not found" };
       const { x, y } = info as { x: number; y: number };
       // Proper trusted-click sequence: move, press (button held), release (none held).
-      const send = (type: string, buttons: number) =>
-        chrome.debugger.sendCommand({ tabId }, "Input.dispatchMouseEvent", {
-          type,
-          x,
-          y,
-          button: "left",
-          buttons,
-          clickCount: 1,
-        });
-      await send("mouseMoved", 0);
-      await send("mousePressed", 1);
-      await send("mouseReleased", 0);
+      const mouse = (type: string, buttons: number) =>
+        send("Input.dispatchMouseEvent", { type, x, y, button: "left", buttons, clickCount: 1 });
+      await mouse("mouseMoved", 0);
+      await mouse("mousePressed", 1);
+      await mouse("mouseReleased", 0);
       // Self-verify: for the delete flow, a working click removes the element.
-      const stillThere = (await evaluate(tabId, existsExpression(cmd.selector))) === true;
+      const stillThere = (await evaluate(send, existsExpression(cmd.selector))) === true;
       if (stillThere) {
         return { ok: false, error: `clicked but element persists — diag ${JSON.stringify(info)}` };
       }
       return { ok: true };
     }
     if (cmd.action === "change" || cmd.action === "input" || cmd.action === "select") {
-      const ok = (await evaluate(tabId, fillExpression(cmd.selector, cmd.value ?? ""))) === true;
+      const value = cmd.value ?? "";
+      const kind = (await evaluate(send, elementKindExpression(cmd.selector))) as string | null;
+      if (kind === null) return { ok: false, error: "element not found" };
+
+      if (kind === "file") {
+        // A file input can only be set through CDP: page JS assigning .value
+        // throws SecurityError. Resolve the element BY REFERENCE (objectId,
+        // not by value) and hand that to DOM.setFileInputFiles.
+        const res = (await send("Runtime.evaluate", {
+          expression: elementRefExpression(cmd.selector),
+          returnByValue: false,
+        })) as { result?: { objectId?: string } };
+        const objectId = res?.result?.objectId;
+        if (!objectId) return { ok: false, error: "element not found" };
+        await send("DOM.setFileInputFiles", { objectId, files: [value] });
+        return { ok: true };
+      }
+
+      if (kind === "text") {
+        // TYPE it: Input.insertText produces real input events. A raw .value
+        // assignment is invisible to React's value tracker, so a JS-filled
+        // form submits empty — the exact failure the relay used to have.
+        const focused = (await evaluate(send, focusAndSelectAllExpression(cmd.selector))) === true;
+        if (!focused) return { ok: false, error: "element not found" };
+        await send("Input.insertText", { text: value });
+        return { ok: true };
+      }
+
+      // toggle / select: state, not text — the JS path is correct for these.
+      const ok = (await evaluate(send, fillExpression(cmd.selector, value))) === true;
       return { ok, error: ok ? undefined : "element not found" };
     }
     if (cmd.action === "keydown") {
-      const focused = (await evaluate(tabId, focusExpression(cmd.selector))) === true;
+      const focused = (await evaluate(send, focusExpression(cmd.selector))) === true;
       if (!focused) return { ok: false, error: "element not found" };
-      const key = cmd.key || "Enter";
-      const vk = VIRTUAL_KEYS[key] ?? 0;
-      const base = { key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
-      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", { type: "keyDown", ...base });
-      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", { type: "keyUp", ...base });
+      for (const event of keyDispatchEvents(cmd.key || "Enter", cmd.modifiers)) {
+        await send("Input.dispatchKeyEvent", event);
+      }
       return { ok: true };
     }
     if (cmd.action === "navigate") return { ok: true };
@@ -210,7 +382,7 @@ export async function connectRelay(
       onStatus(msg.ok ? "paired" : "rejected");
       if (!msg.ok) ws.close();
     } else if (msg.kind === "perform") {
-      const res = await performStep(tabId, msg as PerformInput);
+      const res = await performStep(msg as PerformInput, tabSend(tabId));
       ws.send(
         JSON.stringify({
           kind: "result",

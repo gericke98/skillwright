@@ -1,4 +1,5 @@
-import type { Step } from "@skillwright/shared";
+import type { ReplayStep, Step } from "@skillwright/shared";
+import type { VerifyResult } from "./verify/runner";
 
 /** content script → background */
 export type CaptureMessage =
@@ -16,7 +17,16 @@ export type PanelMessage =
   | { kind: "start"; title: string }
   | { kind: "stop" }
   | { kind: "status" }
-  | { kind: "connectRelay"; port: number; token: string };
+  | { kind: "connectRelay"; port: number; token: string }
+  | { kind: "verify"; steps: ReplayStep[]; confirmDestructive?: boolean };
+
+/** background → side panel: the outcome of a Verify run. */
+export interface VerifyResultMessage {
+  kind: "verifyresult";
+  results: VerifyResult[];
+  /** Set when Verify couldn't run at all (no tab, debugger attach refused). */
+  error?: string;
+}
 
 /** background → side panel: relay connection status. */
 export interface RelayStatusMessage {

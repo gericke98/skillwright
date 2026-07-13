@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { SchemaExhaustedError } from "@skillwright/shared";
 import { MockBackend } from "../src/llm/mock-backend";
-import { SchemaExhaustedError } from "../src/llm/backend";
 import { createLlmHealer } from "../src/heal";
 import type { ReplayStep, PageSnapshot } from "../src/replay";
 

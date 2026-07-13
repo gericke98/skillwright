@@ -1,4 +1,5 @@
 import type { Frame, Locator, Page } from "playwright";
+import { playwrightChord } from "@skillwright/shared";
 import type { PageSnapshot, ReplayStep, StepDriver, StepOutcome, StepRequest } from "./replay";
 import { translateSelector } from "./translate-selector";
 
@@ -103,7 +104,11 @@ export class PlaywrightStepDriver implements StepDriver {
           await loc.click({ timeout: this.timeoutMs });
           return "ok";
         case "keydown":
-          await loc.press(step.key ?? "Enter", { timeout: this.timeoutMs });
+          // The chord, not the bare key: a captured Cmd+S pressed as "s" types
+          // an "s" into the page instead of firing the shortcut.
+          await loc.press(playwrightChord(step.key ?? "Enter", step.modifiers), {
+            timeout: this.timeoutMs,
+          });
           return "ok";
         default:
           return "ok";

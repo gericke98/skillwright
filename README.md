@@ -142,6 +142,26 @@ for air-gapped installs: `npm i -g ./skillwright-*.tgz`.)
 
 ## Quickstart
 
+Two ways in. **Pick the panel if you just want a skill**; pick the CLI if you
+want it wired into an agent, replayed in CI, or self-healing.
+
+### A. Straight from the browser (no CLI)
+
+Open the side panel, paste an API key in settings once, and the panel runs the
+whole pipeline itself:
+
+**record → distill → parameterize → generate script → export → verify**
+
+You approve the parameters it proposes (secrets are always parameters and can't
+be unticked), then **Save to skill folder** writes
+`skillwright/<slug>/{SKILL.md, scripts/replay.ts, assets/recording.json}` straight
+into a folder you pick — a complete, portable Agent Skill. **Verify** replays it
+in the tab so you see it work before you trust it (destructive steps are skipped
+unless you ask for them). No API key? It still compiles, just without the
+LLM-written descriptions.
+
+### B. From the CLI
+
 ```bash
 # 0. Check your environment is ready (LLM backend, Chromium, writable library):
 skillwright doctor
@@ -194,8 +214,12 @@ live LLM, real Chromium, and a real non-Anthropic agent). Honest gaps on the way
 to 1.0:
 
 - [ ] Publish to npm + Chrome Web Store submission
+- [x] **In-extension pipeline** — record → distill → parameterize → script →
+      export → verify, entirely in the side panel. The CLI is now optional.
 - [x] Live network-truth capture (passive CDP observer) + API-replay mode
 - [x] Tier-3 heal over the relay transport (extension ARIA snapshot channel)
+- [x] File upload over the relay (`DOM.setFileInputFiles`) — both paths now
+- [x] Keyboard-shortcut fidelity — modifiers survive capture → replay
 - [x] Real-world hardening — dogfooding public sites fixed 4 bugs (selector
       priority, a nested-URL secret leak, form-field anchors, selector uniqueness)
 - [x] **Shadow DOM** — capture pierces the boundary via `composedPath()` (the
