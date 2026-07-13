@@ -92,6 +92,28 @@ describe("pickAndPersistHandle", () => {
     expect(await pickAndPersistHandle(picker, store)).toBe(h);
     expect(await store.get()).toBe(h);
   });
+
+  test("a handle that can't be persisted is still returned (persisting is an optimization)", async () => {
+    // Private browsing / blocked storage: IndexedDB refuses the handle. The
+    // folder the user just picked is still perfectly usable — throwing here
+    // would downgrade a successful pick into a downloads-folder fallback.
+    const h = fakeHandle({ query: "granted" });
+    const hostileStore: HandleStore = {
+      get: async () => undefined,
+      set: async () => {
+        throw new DOMException("cannot clone", "DataCloneError");
+      },
+    };
+    await expect(pickAndPersistHandle(async () => h, hostileStore)).resolves.toBe(h);
+  });
+
+  test("a cancelled picker still propagates (the caller owns the fallback)", async () => {
+    const store = memoryStore();
+    const picker = async () => {
+      throw new DOMException("aborted", "AbortError");
+    };
+    await expect(pickAndPersistHandle(picker, store)).rejects.toThrow();
+  });
 });
 
 describe("downloadSkill (Tier 0 fallback)", () => {

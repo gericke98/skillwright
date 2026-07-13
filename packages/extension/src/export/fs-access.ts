@@ -93,13 +93,23 @@ function defaultPicker(): Promise<FileSystemDirectoryHandle> {
  * Ask the user to pick the skill folder and persist the handle for next time.
  * Propagates `AbortError` (user cancelled the picker) — callers decide the
  * fallback.
+ *
+ * Persisting is an OPTIMIZATION (it skips the picker next time), not a
+ * requirement: if IndexedDB refuses the handle — private browsing, storage
+ * blocked, a browser that can't structured-clone it — we still return the
+ * perfectly usable handle the user just picked. Letting that throw would
+ * downgrade a successful folder pick into a downloads-folder fallback.
  */
 export async function pickAndPersistHandle(
   picker: () => Promise<FileSystemDirectoryHandle> = defaultPicker,
   store: HandleStore = idbHandleStore(),
 ): Promise<FileSystemDirectoryHandle> {
   const handle = await picker();
-  await store.set(handle);
+  try {
+    await store.set(handle);
+  } catch {
+    /* not persistable — the user just re-picks next time */
+  }
   return handle;
 }
 

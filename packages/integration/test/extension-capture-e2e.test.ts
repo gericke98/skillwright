@@ -56,6 +56,146 @@ afterAll(async () => {
   await fx?.close();
 });
 
+/**
+ * Canned provider responses, dispatched by the "TASK:" marker each pass puts in
+ * its prompt. Playwright intercepts the real api.anthropic.com request from the
+ * extension's own origin, so the panel runs its REAL backend, REAL distiller and
+ * REAL parameterizer — only the model is faked. No production code is test-aware.
+ */
+function cannedLlmResponse(prompt: string, stepCount: number): unknown {
+  if (prompt.includes("TASK: infer intent")) {
+    return { title: "Sign in to Acme Billing", description: "Signs in to the Acme billing app." };
+  }
+  if (prompt.includes("TASK: extract parameters")) {
+    // The proposer names the username but MISSES the password — the secret
+    // floor must add it back, hardened, without any help from the model.
+    return { params: [{ name: "username", type: "string", required: true, demoValue: "demo-user" }] };
+  }
+  if (prompt.includes("TASK: critique parameters")) {
+    return { removals: [], additions: [], typeFixes: [] };
+  }
+  if (prompt.includes("TASK: classify effects")) {
+    return { effects: Array.from({ length: stepCount }, () => "readonly") };
+  }
+  if (prompt.includes("TASK: narrate steps")) {
+    return { steps: Array.from({ length: stepCount }, (_, i) => ({ description: `Step ${i + 1}` })) };
+  }
+  return {};
+}
+
+describe("built MV3 extension — full in-extension pipeline", () => {
+  test("record → distill → parameterize → approve → export writes a skill with skillwright-inputs", async (t) => {
+    if (!available) t.skip();
+    const id = new URL(sw!.url()).host;
+
+    const panel = await ctx!.newPage();
+
+    // Capture what the REAL export writer emits: stub only the browser's own
+    // directory picker (a platform API, not our code) with a recording handle.
+    await panel.addInitScript(() => {
+      const w = window as unknown as Record<string, unknown>;
+      const written: Record<string, string> = {};
+      w.__written = written;
+      const makeDir = (base: string): unknown => ({
+        getDirectoryHandle: async (name: string) => makeDir(`${base}${name}/`),
+        getFileHandle: async (name: string) => ({
+          createWritable: async () => ({
+            write: async (data: string) => {
+              written[`${base}${name}`] = data;
+            },
+            close: async () => {},
+          }),
+        }),
+      });
+      w.showDirectoryPicker = async () => makeDir("");
+    });
+
+    // The panel's distill/parameterize passes call the provider; serve canned
+    // JSON so the run is deterministic and offline.
+    let stepCountForLlm = 0;
+    await panel.route("https://api.anthropic.com/**", async (route) => {
+      const body = route.request().postDataJSON() as { messages: { content: string }[] };
+      const prompt = body.messages[0]!.content;
+      const payload = cannedLlmResponse(prompt, stepCountForLlm);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify(payload) }] }),
+      });
+    });
+
+    await panel.goto(`chrome-extension://${id}/src/panel.html`);
+
+    // BYO-key settings: the panel needs a configured backend to parameterize.
+    await panel.evaluate(() =>
+      chrome.storage.local.set({
+        llmSettings: { provider: "anthropic", apiKey: "sk-test-key", model: "claude-test" },
+      }),
+    );
+
+    await panel.evaluate(() => chrome.runtime.sendMessage({ kind: "start", title: "sign in" }));
+
+    // Type a username AND a password on the real fixture form.
+    const page = await ctx!.newPage();
+    await page.goto(fx.url);
+    await page.getByLabel("Username").fill("demo-user");
+    // Blur each field: `fill` only dispatches `input`; a text field's `change`
+    // event (what capture listens for) fires natively on blur.
+    await page.getByLabel("Username").blur();
+    await page.getByLabel("Password").fill("hunter2-super-secret");
+    await page.getByLabel("Password").blur();
+    await page.waitForTimeout(300);
+    stepCountForLlm = 2;
+
+    await panel.evaluate(() => chrome.runtime.sendMessage({ kind: "stop" }));
+
+    // The panel now runs distill → parameterize on its own; approval is the
+    // one human gate.
+    await panel.waitForSelector("#approve-params", { timeout: 30000 });
+
+    // The password must be offered as a REQUIRED secret param even though the
+    // proposer never mentioned it, and the user must not be able to drop it.
+    const secretLocked = await panel.evaluate(() => {
+      const row = document.querySelector(".param-secret");
+      const include = row?.querySelector<HTMLInputElement>(".param-include");
+      return { present: !!row, disabled: include?.disabled === true };
+    });
+    expect(secretLocked).toEqual({ present: true, disabled: true });
+
+    await panel.click("#approve-params");
+
+    // Approval advances script → export; the export button carries the final skill.
+    await panel.waitForSelector("#export-skill", { timeout: 15000 });
+    await panel.click("#export-skill");
+    await panel.waitForFunction(
+      () => Object.keys((window as any).__written ?? {}).length > 0,
+      undefined,
+      { timeout: 15000 },
+    );
+
+    const written = (await panel.evaluate(() => (window as any).__written)) as Record<string, string>;
+    const skillMdPath = Object.keys(written).find((p) => p.endsWith("SKILL.md"));
+    expect(skillMdPath).toBeDefined();
+    // Written under skillwright/<slug>/.
+    expect(skillMdPath!.startsWith("skillwright/")).toBe(true);
+
+    const skillMd = written[skillMdPath!]!;
+    // The whole point of Task 6.0: approved params reach the artifact.
+    expect(skillMd).toContain("skillwright-inputs:");
+    const inputsLine = skillMd.split("\n").find((l) => l.includes("skillwright-inputs:"))!;
+    expect(inputsLine).toContain("username");
+    expect(inputsLine).toContain("password");
+
+    // And the real secret NEVER lands in the exported artifact.
+    for (const content of Object.values(written)) {
+      expect(content).not.toContain("hunter2-super-secret");
+    }
+
+    await page.close();
+    await panel.close();
+  }, 120000);
+});
+
 describe("built MV3 extension — real capture end-to-end", () => {
   // Dynamic skip INSIDE the body: `available` is only known after beforeAll, and
   // test.skipIf/.skip are evaluated at collection time (before beforeAll runs).
