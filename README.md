@@ -147,8 +147,7 @@ want it wired into an agent, replayed in CI, or self-healing.
 
 ### A. Straight from the browser (no CLI)
 
-Open the side panel, paste an API key in settings once, and the panel runs the
-whole pipeline itself:
+Open the side panel and the panel runs the whole pipeline itself:
 
 **record → distill → parameterize → generate script → export → verify**
 
@@ -157,8 +156,19 @@ be unticked), then **Save to skill folder** writes
 `skillwright/<slug>/{SKILL.md, scripts/replay.ts, assets/recording.json}` straight
 into a folder you pick — a complete, portable Agent Skill. **Verify** replays it
 in the tab so you see it work before you trust it (destructive steps are skipped
-unless you ask for them). No API key? It still compiles, just without the
-LLM-written descriptions.
+unless you ask for them).
+
+**Your LLM, your choice — skillwright runs no gateway.** In *LLM settings* pick
+Anthropic or OpenAI with your own key, or **Custom** to point at any
+OpenAI-compatible endpoint: your gateway (OpenRouter, LiteLLM, Azure, a corporate
+proxy) or a local model like **Ollama**, which needs no key and sends nothing off
+your machine. The key lives in `chrome.storage.local` and goes only to the
+endpoint you name.
+
+**No key at all still works.** The pipeline never dead-ends: you lose the
+LLM-written descriptions and the smart parameter names, but the skill still
+compiles, and the *secret floor still fires* — a redacted password is still forced
+into a required, valueless parameter, because that rule is code, not a prompt.
 
 ### B. From the CLI
 

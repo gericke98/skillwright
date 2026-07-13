@@ -130,3 +130,73 @@ describe("fetch backend", () => {
     ).rejects.toThrow("OpenAI response missing choices[0].message.content");
   });
 });
+
+/**
+ * Skillwright runs NO gateway of its own. `baseUrl` is how a user points the
+ * extension at THEIR gateway (OpenRouter, LiteLLM, Azure, a corporate proxy)
+ * or at a local model — which also means the prompt never leaves their machine.
+ */
+describe("fetch backend — custom endpoint (bring your own gateway)", () => {
+  const okOpenAi = () =>
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":true}' } }] })),
+    );
+  const schema = { jsonSchema: {}, validate: (v: any) => (v?.ok ? [] : ["no ok"]) };
+
+  it("posts to the custom baseUrl instead of a hosted provider", async () => {
+    const fetchImpl = okOpenAi();
+    const be = createFetchBackend({
+      provider: "custom",
+      apiKey: "sk-or-1",
+      model: "llama-3.3",
+      baseUrl: "https://openrouter.ai/api/v1/chat/completions",
+      fetchImpl,
+    });
+    await be.complete("hi", schema);
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://openrouter.ai/api/v1/chat/completions");
+  });
+
+  it("speaks the OpenAI wire format (the de-facto standard every gateway accepts)", async () => {
+    const fetchImpl = okOpenAi();
+    const be = createFetchBackend({
+      provider: "custom",
+      apiKey: "k",
+      model: "m",
+      baseUrl: "https://gw.test/v1/chat/completions",
+      fetchImpl,
+    });
+    await be.complete("hi", schema);
+    const body = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(body).toMatchObject({ model: "m", messages: [{ role: "user", content: "hi" }] });
+  });
+
+  it("sends NO Authorization header when there is no key (a local model needs none)", async () => {
+    const fetchImpl = okOpenAi();
+    const be = createFetchBackend({
+      provider: "custom",
+      apiKey: "",
+      model: "llama3",
+      baseUrl: "http://localhost:11434/v1/chat/completions",
+      fetchImpl,
+    });
+    await be.complete("hi", schema);
+    const headers = fetchImpl.mock.calls[0][1]?.headers as Record<string, string>;
+    expect(headers.Authorization).toBeUndefined();
+  });
+
+  it("a baseUrl also overrides the hosted anthropic endpoint (proxy in front of Anthropic)", async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response(JSON.stringify({ content: [{ type: "text", text: '{"ok":true}' }] })),
+    );
+    const be = createFetchBackend({
+      provider: "anthropic",
+      apiKey: "k",
+      model: "claude-sonnet-5",
+      baseUrl: "https://proxy.corp.test/anthropic/v1/messages",
+      fetchImpl,
+    });
+    await be.complete("hi", schema);
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://proxy.corp.test/anthropic/v1/messages");
+  });
+});

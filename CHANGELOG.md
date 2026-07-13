@@ -8,6 +8,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **LLM settings in the panel.** There was previously no way to enter an API key at
+  all — the storage layer existed but nothing in the UI called it, so the panel's
+  pipeline was unreachable for a real user. Provider, model and key are now editable
+  in the side panel.
+- **Bring your own gateway.** A `custom` provider accepts any OpenAI-compatible
+  endpoint: OpenRouter, LiteLLM, Azure, a corporate proxy — or a **local model**
+  (Ollama, LM Studio), which needs no API key and sends nothing off the machine.
+  Skillwright operates no gateway of its own and never will; a `baseUrl` also
+  overrides the hosted Anthropic/OpenAI endpoints for proxy setups.
+
+### Fixed
+
+- **The pipeline no longer dead-ends without an API key.** Parameterize used to
+  render "configure a provider" and simply stop, stranding the run before export —
+  so a user without a key could never get a skill out of the panel. It now degrades
+  to `parameterizeWithoutLlm`, which still applies the deterministic **secret
+  floor**: a redacted password is forced into a required, valueless parameter with
+  no model involved. Losing the LLM costs you smart parameter names, never the
+  skill and never the secret handling. Same for a bad key or a rate limit.
+
 - **The whole pipeline now runs inside the extension.** The side panel takes a
   recording through distill → parameterize → generate script → export → verify
   without the CLI: BYO-key LLM settings, a parameter-approval gate, tiered export

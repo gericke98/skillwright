@@ -1,9 +1,23 @@
 const STORAGE_KEY = "llmSettings";
 
+export type LlmProvider = "anthropic" | "openai" | "custom";
+
 export interface LlmSettings {
-  provider: "anthropic" | "openai";
+  provider: LlmProvider;
+  /**
+   * Empty is legitimate for `custom`: a local model (Ollama, LM Studio) needs
+   * no key. Still required for the hosted providers.
+   */
   apiKey: string;
   model: string;
+  /**
+   * Where to POST. Required for `custom` — that's how a user brings their OWN
+   * gateway (OpenRouter, LiteLLM, Azure, a corporate proxy) or points at a
+   * local model. Skillwright operates no gateway of its own. Optional for the
+   * hosted providers, where it overrides the default endpoint (e.g. a proxy in
+   * front of Anthropic).
+   */
+  baseUrl?: string;
 }
 
 /** The subset of `chrome.storage.local` this module needs. Kept minimal and
@@ -22,13 +36,18 @@ function defaultStorage(): LlmSettingsStorage {
 function isCompleteSettings(value: unknown): value is LlmSettings {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  return (
-    (v.provider === "anthropic" || v.provider === "openai") &&
-    typeof v.apiKey === "string" &&
-    v.apiKey.length > 0 &&
-    typeof v.model === "string" &&
-    v.model.length > 0
-  );
+  const providerOk = v.provider === "anthropic" || v.provider === "openai" || v.provider === "custom";
+  if (!providerOk) return false;
+  if (typeof v.apiKey !== "string") return false;
+  if (typeof v.model !== "string" || v.model.length === 0) return false;
+
+  if (v.provider === "custom") {
+    // No key needed (local models), but we must know WHERE to send the request.
+    return typeof v.baseUrl === "string" && v.baseUrl.length > 0;
+  }
+  // Hosted providers: the key is what makes the call possible at all.
+  if (v.apiKey.length === 0) return false;
+  return v.baseUrl === undefined || typeof v.baseUrl === "string";
 }
 
 /**

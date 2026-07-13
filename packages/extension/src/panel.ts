@@ -1,6 +1,6 @@
 /** Side panel controller — thin UI over the background worker's state. */
 import type { Recording, SkillDirectory } from "@skillwright/shared";
-import { applyParamsToSkill, parameterize, toReplaySteps } from "@skillwright/shared";
+import { applyParamsToSkill, toReplaySteps } from "@skillwright/shared";
 import type {
   PanelMessage,
   StatusMessage,
@@ -13,9 +13,11 @@ import { advance, initialState, type PipelineState } from "./pipeline/state";
 import { renderStages } from "./pipeline/stage-view";
 import { renderParamApproval } from "./pipeline/param-view";
 import { renderExport, renderExportStatus } from "./pipeline/export-view";
-import { readLlmSettings } from "./llm/settings";
+import { readLlmSettings, writeLlmSettings } from "./llm/settings";
+import { renderSettings, renderSettingsStatus } from "./llm/settings-view";
 import { createFetchBackend } from "./llm/fetch-backend";
 import { runDistill } from "./pipeline/run-distill";
+import { runParameterize } from "./pipeline/run-parameterize";
 import { runExport } from "./pipeline/run-export";
 import { pickAndPersistHandle, restoreHandle, saveSkillToFolder } from "./export/fs-access";
 import { downloadSkill } from "./export/downloads";
@@ -58,6 +60,22 @@ toggle.addEventListener("click", async () => {
   } else {
     await send({ kind: "start", title: taskName.value.trim() || "Untitled task" });
   }
+});
+
+// LLM settings. This is the ONLY place the API key is written, and it never
+// leaves chrome.storage.local — not into a skill, a recording, or an export.
+const settingsEl = document.getElementById("llm-settings") as HTMLDivElement;
+
+void readLlmSettings().then((current) => {
+  renderSettings(settingsEl, current, {
+    onSave: (settings) => {
+      void writeLlmSettings(settings).then(
+        () => renderSettingsStatus(settingsEl, `Saved. Using ${settings.provider}.`),
+        (e: unknown) =>
+          renderSettingsStatus(settingsEl, `Could not save: ${e instanceof Error ? e.message : String(e)}`),
+      );
+    },
+  });
 });
 
 // Relay pairing controls.
@@ -125,27 +143,42 @@ async function runDistillStage(recordingToDistill: Recording): Promise<void> {
   setPipeline(advance(pipeline, { kind: "distilled", skill: result.skill }));
 }
 
+/**
+ * Parameterize stage. NEVER dead-ends: with no key (or a broken one) it falls
+ * back to the deterministic secret floor and still shows the approval UI, so
+ * the pipeline reaches export either way. It used to render "configure a
+ * provider" and stop, which stranded every user without a key before they could
+ * ever get a skill out of the panel.
+ */
 async function runParameterizeStage(recordingToParameterize: Recording): Promise<void> {
   parameterizeEl.innerHTML = "";
   const settings = await readLlmSettings();
-  if (!settings) {
-    const prompt = document.createElement("p");
-    prompt.className = "settings-prompt";
-    prompt.textContent = "Configure an LLM provider + API key in settings before parameterizing.";
-    parameterizeEl.appendChild(prompt);
-    return;
-  }
+  const backend = settings ? createFetchBackend(settings) : undefined;
+  const result = await runParameterize(recordingToParameterize, backend);
 
-  const backend = createFetchBackend(settings);
-  try {
-    const params = await parameterize(recordingToParameterize, backend);
-    renderParamApproval(parameterizeEl, params, {
-      onApprove: (edited) => {
-        setPipeline(advance(pipeline, { kind: "parameterized", params: edited }));
-      },
-    });
-  } catch (e) {
-    setPipeline(advance(pipeline, { kind: "failed", error: e instanceof Error ? e.message : String(e) }));
+  // renderParamApproval OWNS the container (it clears it), so the notice has to
+  // go in after it, prepended — appending before would be silently wiped.
+  renderParamApproval(parameterizeEl, result.params, {
+    onApprove: (edited) => {
+      setPipeline(advance(pipeline, { kind: "parameterized", params: edited }));
+    },
+  });
+
+  if (!result.usedLlm) {
+    const block = document.createDocumentFragment();
+    const notice = document.createElement("p");
+    notice.className = "stage-notice";
+    notice.textContent = settings
+      ? "Parameters couldn't be inferred by the model — only secrets were parameterized. Everything else stays as recorded."
+      : "No LLM configured, so only secrets were parameterized. Add a provider in LLM settings above for smarter parameters.";
+    block.appendChild(notice);
+    if (result.llmError) {
+      const detail = document.createElement("p");
+      detail.className = "stage-notice-detail";
+      detail.textContent = result.llmError;
+      block.appendChild(detail);
+    }
+    parameterizeEl.prepend(block);
   }
 }
 
