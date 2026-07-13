@@ -8,6 +8,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`skillwright serve` — the panel borrows the CLI's brain, so no API key is needed
+  at all.** The extension sends prompts to the local `serve` process over the relay
+  WebSocket, and the CLI answers using the backend it already has: the user's
+  existing `claude`/`codex`/`gemini` auth. No key in `chrome.storage.local`, none to
+  create, and nothing sent anywhere their agent CLI wasn't already sending it. The
+  schema never crosses the wire (a `SchemaSpec.validate` is a function) — only
+  prompt→text, with extraction, validation and the repair reprompt staying in the
+  browser. Generate requests are refused unless paired, and refused outright by
+  `run --relay`: a replay session is not an LLM endpoint.
 - **LLM settings in the panel.** There was previously no way to enter an API key at
   all — the storage layer existed but nothing in the UI called it, so the panel's
   pipeline was unreachable for a real user. Provider, model and key are now editable
@@ -20,6 +29,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Keyboard shortcuts were still dropped on the CLI-driven relay path.**
+  `RelayStepDriver` sent `{action, selector, value, key}` and never forwarded the
+  captured modifiers, so a recorded Cmd+S still replayed as typing an "s" whenever
+  the CLI drove the extension. The wire protocol now carries them.
 - **The pipeline no longer dead-ends without an API key.** Parameterize used to
   render "configure a provider" and simply stop, stranding the run before export —
   so a user without a key could never get a skill out of the panel. It now degrades

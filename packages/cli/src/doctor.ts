@@ -63,11 +63,15 @@ export function runDoctor(probes: DoctorProbes): DoctorReport {
     const found = AGENT_BINARIES.find((b) => probes.which(b));
     checks.push(
       found
-        ? { name: "LLM backend", status: "pass", detail: `agent-cli:${found} (found on PATH)` }
+        ? {
+            name: "LLM backend",
+            status: "pass",
+            detail: `agent-cli:${found} (found on PATH) — also lends the panel its brain via \`skillwright serve\``,
+          }
         : {
             name: "LLM backend",
             status: "fail",
-            detail: `no agent CLI on PATH (looked for ${AGENT_BINARIES.join(", ")}) and no SKILLWRIGHT_API_KEY — semantic distill won't run`,
+            detail: `no agent CLI on PATH (looked for ${AGENT_BINARIES.join(", ")}) and no SKILLWRIGHT_API_KEY — semantic distill won't run (the panel can still use a BYO key in its LLM settings)`,
           },
     );
   }

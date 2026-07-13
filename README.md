@@ -158,12 +158,22 @@ into a folder you pick — a complete, portable Agent Skill. **Verify** replays 
 in the tab so you see it work before you trust it (destructive steps are skipped
 unless you ask for them).
 
-**Your LLM, your choice — skillwright runs no gateway.** In *LLM settings* pick
+**No API key needed — use the CLI you already have.** Run:
+
+```bash
+skillwright serve   # lends the panel this machine's LLM; prints a port + token
+```
+
+Pick **Local skillwright CLI** in *LLM settings*, paste the port and token, and the
+panel compiles skills through your existing `claude` / `codex` / `gemini` auth. No
+key in the browser, none to create, and nothing sent anywhere your agent CLI wasn't
+already sending it.
+
+**Or bring your own key — skillwright runs no gateway.** In *LLM settings* pick
 Anthropic or OpenAI with your own key, or **Custom** to point at any
 OpenAI-compatible endpoint: your gateway (OpenRouter, LiteLLM, Azure, a corporate
-proxy) or a local model like **Ollama**, which needs no key and sends nothing off
-your machine. The key lives in `chrome.storage.local` and goes only to the
-endpoint you name.
+proxy) or a local model like **Ollama**, which needs no key either. The key lives in
+`chrome.storage.local` and goes only to the endpoint you name.
 
 **No key at all still works.** The pipeline never dead-ends: you lose the
 LLM-written descriptions and the smart parameter names, but the skill still

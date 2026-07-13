@@ -3,6 +3,8 @@ import { verifyToken } from "./token";
 import {
   parseMessage,
   type FromExtension,
+  type GenerateMessage,
+  type GeneratedMessage,
   type PerformMessage,
   type PairedMessage,
 } from "./relay-protocol";
@@ -14,6 +16,14 @@ export interface RelayServerOptions {
   port?: number;
   /** Per-perform timeout (ms). */
   performTimeoutMs?: number;
+  /**
+   * Raw text completion for `generate` requests from the extension. When set
+   * (i.e. `skillwright serve`), the panel can compile skills using the CLI's own
+   * backend — the user's existing claude/codex auth — instead of a BYO key in
+   * browser storage. Unset (i.e. `run --relay`) means generate requests are
+   * refused: a replay session is not an LLM endpoint.
+   */
+  onGenerate?: (prompt: string) => Promise<string>;
 }
 
 /**
@@ -74,11 +84,46 @@ export class WsRelayServer {
           this.pending.delete(msg.id);
           resolver({ ok: msg.ok, error: msg.error, url: msg.url, aria: msg.aria });
         }
+        return;
+      }
+      if (msg.kind === "generate") {
+        void this.onGenerateMessage(ws, msg);
       }
     });
     ws.on("close", () => {
       if (this.ext === ws) this.ext = undefined;
     });
+  }
+
+  /**
+   * Answer a paired extension's `generate` with the CLI's own LLM backend.
+   *
+   * Only reachable AFTER pairing (the caller checks), so an unauthenticated
+   * localhost page can't turn a running relay into a free LLM proxy. Refused
+   * outright unless `onGenerate` was provided — `run --relay` is a replay
+   * session, not an LLM endpoint.
+   */
+  private async onGenerateMessage(ws: WebSocket, msg: GenerateMessage): Promise<void> {
+    if (!this.opts.onGenerate) {
+      this.send(ws, {
+        kind: "generated",
+        id: msg.id,
+        ok: false,
+        error: "this relay does not serve LLM requests — start `skillwright serve`",
+      } satisfies GeneratedMessage);
+      return;
+    }
+    try {
+      const text = await this.opts.onGenerate(msg.prompt);
+      this.send(ws, { kind: "generated", id: msg.id, ok: true, text } satisfies GeneratedMessage);
+    } catch (e) {
+      this.send(ws, {
+        kind: "generated",
+        id: msg.id,
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      } satisfies GeneratedMessage);
+    }
   }
 
   private send(ws: WebSocket, obj: unknown): void {

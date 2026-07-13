@@ -25,6 +25,44 @@ interface ContentBlock {
  * distiller's schema — so JSON comes back structured, not as free text. Low
  * retry budget because native structured output rarely needs a repair round.
  */
+/**
+ * Raw text completion from the Anthropic API — no forced tool call, because the
+ * caller (the extension, over `skillwright serve`) holds the schema and does its
+ * own extraction + repair. Text mode is less reliable than the tool-forcing path
+ * `createApiBackend` uses, which is exactly why the extension-side repair budget
+ * is the text-mode one (3), not the api one (1).
+ */
+export function createApiGenerate(opts: ApiOptions): {
+  name: string;
+  generate: (prompt: string) => Promise<string>;
+} {
+  const model = opts.model ?? DEFAULT_MODEL;
+  const endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;
+  const fetchImpl = opts.fetchImpl ?? fetch;
+
+  return {
+    name: `api:${model}`,
+    generate: async (prompt: string): Promise<string> => {
+      const res = await fetchImpl(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": opts.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4096,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      if (!res.ok) throw new Error(`Anthropic API error ${res.status}`);
+      const data = (await res.json()) as { content?: ContentBlock[] };
+      return data.content?.find((b) => b.type === "text")?.text ?? "";
+    },
+  };
+}
+
 export function createApiBackend(opts: ApiOptions): LlmBackend {
   const model = opts.model ?? DEFAULT_MODEL;
   const endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;

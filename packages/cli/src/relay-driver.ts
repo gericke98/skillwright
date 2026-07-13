@@ -5,6 +5,9 @@ export interface PerformRequest {
   selector: string;
   value?: string;
   key?: string;
+  /** Modifiers held for a keydown — a captured Cmd+S sent without them replays
+   *  as typing an "s" into the page. */
+  modifiers?: string[];
 }
 
 export interface PerformResult {
@@ -37,6 +40,7 @@ export class RelayStepDriver implements StepDriver {
         selector,
         value: step.value,
         key: step.key,
+        modifiers: step.modifiers,
       });
       return res.ok ? "ok" : "fail";
     } catch {
