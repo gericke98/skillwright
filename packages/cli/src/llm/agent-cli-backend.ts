@@ -59,15 +59,20 @@ function spawnRunner(bin: string, args: string[], input: string): Promise<string
 }
 
 /**
- * agent-cli backend (§6.3): drive a local coding-agent CLI headlessly and pull
- * schema-valid JSON out of its free-text output via the repair loop. Higher
- * retry budget than the api backend because text-mode structure is unreliable.
+ * Raw text completion from the local agent CLI — no schema, no repair loop.
+ *
+ * This is what `skillwright serve` hands to the extension: the schema lives in
+ * the browser (a `SchemaSpec.validate` is a FUNCTION and can't cross a
+ * WebSocket), so only prompt→text travels over the wire and the repair loop
+ * stays on the extension side, reprompting through this same channel.
  */
-export function createAgentCliBackend(opts: AgentCliOptions = {}): LlmBackend {
+export function createAgentCliGenerate(opts: AgentCliOptions = {}): {
+  name: string;
+  generate: (prompt: string) => Promise<string>;
+} {
   const candidates = opts.binaries ?? DEFAULT_BINARIES;
   const detect = opts.detectBinary ?? detectOnPath;
   const run = opts.runCommand ?? spawnRunner;
-  const maxAttempts = opts.maxAttempts ?? 3;
 
   const bin = detect(candidates);
   if (!bin) {
@@ -76,11 +81,22 @@ export function createAgentCliBackend(opts: AgentCliOptions = {}): LlmBackend {
     );
   }
   const args = INVOCATION_ARGS[bin] ?? [];
+  return { name: `agent-cli:${bin}`, generate: (p) => run(bin, args, p) };
+}
+
+/**
+ * agent-cli backend (§6.3): drive a local coding-agent CLI headlessly and pull
+ * schema-valid JSON out of its free-text output via the repair loop. Higher
+ * retry budget than the api backend because text-mode structure is unreliable.
+ */
+export function createAgentCliBackend(opts: AgentCliOptions = {}): LlmBackend {
+  const maxAttempts = opts.maxAttempts ?? 3;
+  const { name, generate } = createAgentCliGenerate(opts);
 
   return {
-    name: `agent-cli:${bin}`,
+    name,
     complete<T>(prompt: string, schema: SchemaSpec<T>): Promise<T> {
-      return completeWithRepair((p) => run(bin, args, p), prompt, schema, maxAttempts);
+      return completeWithRepair(generate, prompt, schema, maxAttempts);
     },
   };
 }

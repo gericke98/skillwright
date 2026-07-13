@@ -79,3 +79,24 @@ describe("llm settings — custom / OpenAI-compatible endpoint", () => {
     expect(await readLlmSettings(storage)).toBeUndefined();
   });
 });
+
+describe("llm settings — local CLI (relay) provider", () => {
+  it("round-trips relay pairing details with no key and no model", async () => {
+    const storage = fakeStorage();
+    await writeLlmSettings(
+      { provider: "relay", apiKey: "", model: "", relayPort: 9333, relayToken: "tok" },
+      storage,
+    );
+    expect(await readLlmSettings(storage)).toMatchObject({
+      provider: "relay",
+      relayPort: 9333,
+      relayToken: "tok",
+    });
+  });
+
+  it("rejects relay settings with no token (can't pair)", async () => {
+    const storage = fakeStorage();
+    await storage.set({ llmSettings: { provider: "relay", apiKey: "", model: "", relayPort: 9333 } });
+    expect(await readLlmSettings(storage)).toBeUndefined();
+  });
+});

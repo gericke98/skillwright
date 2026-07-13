@@ -26,6 +26,31 @@ export interface PerformMessage {
   selector: string;
   value?: string;
   key?: string;
+  /** Modifiers held for a keydown. Without these a captured Cmd+S replays as
+   *  typing an "s" — the wire has to carry them, not just the key. */
+  modifiers?: string[];
+}
+
+/**
+ * extension → relay: run this prompt through the CLI's own LLM backend.
+ *
+ * Only the PROMPT crosses the wire, never the schema: a `SchemaSpec.validate` is
+ * a function. The extension keeps the schema, validates the returned text, and
+ * reprompts through this same channel on a mismatch.
+ */
+export interface GenerateMessage {
+  kind: "generate";
+  id: number;
+  prompt: string;
+}
+
+/** relay → extension: the raw completion (or why there isn't one). */
+export interface GeneratedMessage {
+  kind: "generated";
+  id: number;
+  ok: boolean;
+  text?: string;
+  error?: string;
 }
 
 /** extension → relay: the outcome of a perform. */
@@ -39,8 +64,8 @@ export interface ResultMessage {
   aria?: string;
 }
 
-export type FromExtension = PairMessage | ResultMessage;
-export type ToExtension = PairedMessage | PerformMessage;
+export type FromExtension = PairMessage | ResultMessage | GenerateMessage;
+export type ToExtension = PairedMessage | PerformMessage | GeneratedMessage;
 
 /** Parse a JSON wire message defensively; returns null on malformed input. */
 export function parseMessage<T>(raw: string): T | null {

@@ -124,3 +124,60 @@ describe("renderSettings — bring your own gateway (custom provider)", () => {
     expect($<HTMLInputElement>("#llm-model").value).toBe("gpt-4o");
   });
 });
+
+/**
+ * The best option: no API key in the browser at all. The panel asks the local
+ * `skillwright serve` process, which answers with the CLI's own backend (the
+ * user's existing claude/codex auth).
+ */
+describe("renderSettings — local CLI (relay) provider", () => {
+  function selectRelay(): void {
+    const provider = $<HTMLSelectElement>("#llm-provider");
+    provider.value = "relay";
+    provider.dispatchEvent(new Event("change"));
+  }
+
+  test("asks for pairing details and NOT for a key or a model", () => {
+    renderSettings(container, undefined, { onSave: () => {} });
+    selectRelay();
+    expect($<HTMLElement>("#llm-relay-port-row").hidden).toBe(false);
+    expect($<HTMLElement>("#llm-relay-token-row").hidden).toBe(false);
+    // The local CLI owns both of these — asking would be a lie.
+    expect($<HTMLElement>("#llm-api-key-row").hidden).toBe(true);
+    expect($<HTMLElement>("#llm-model-row").hidden).toBe(true);
+  });
+
+  test("saves with an empty api key — that IS the feature", () => {
+    let saved: LlmSettings | undefined;
+    renderSettings(container, undefined, { onSave: (s) => (saved = s) });
+    selectRelay();
+    $<HTMLInputElement>("#llm-relay-token").value = "tok-123";
+    $<HTMLButtonElement>("#llm-save").click();
+    expect(saved).toEqual({
+      provider: "relay",
+      apiKey: "",
+      model: "",
+      relayPort: 9333,
+      relayToken: "tok-123",
+    });
+  });
+
+  test("refuses to save without the token skillwright serve printed", () => {
+    let saved: LlmSettings | undefined;
+    renderSettings(container, undefined, { onSave: (s) => (saved = s) });
+    selectRelay();
+    $<HTMLButtonElement>("#llm-save").click();
+    expect(saved).toBeUndefined();
+    expect(container.textContent).toContain("token");
+  });
+
+  test("a stale API key typed earlier is not carried into relay settings", () => {
+    let saved: LlmSettings | undefined;
+    renderSettings(container, undefined, { onSave: (s) => (saved = s) });
+    $<HTMLInputElement>("#llm-api-key").value = "sk-leftover";
+    selectRelay();
+    $<HTMLInputElement>("#llm-relay-token").value = "tok-123";
+    $<HTMLButtonElement>("#llm-save").click();
+    expect(saved!.apiKey).toBe("");
+  });
+});

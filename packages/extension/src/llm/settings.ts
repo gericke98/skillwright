@@ -1,15 +1,22 @@
 const STORAGE_KEY = "llmSettings";
 
-export type LlmProvider = "anthropic" | "openai" | "custom";
+export type LlmProvider = "anthropic" | "openai" | "custom" | "relay";
 
 export interface LlmSettings {
   provider: LlmProvider;
   /**
-   * Empty is legitimate for `custom`: a local model (Ollama, LM Studio) needs
-   * no key. Still required for the hosted providers.
+   * Empty is legitimate for `custom` (a local model needs no key) and for
+   * `relay` (there IS no key — that's the point). Still required for the hosted
+   * providers.
    */
   apiKey: string;
+  /**
+   * Ignored for `relay`: the local CLI already knows which model it drives.
+   */
   model: string;
+  /** `relay` only: the port + token printed by `skillwright serve`. */
+  relayPort?: number;
+  relayToken?: string;
   /**
    * Where to POST. Required for `custom` — that's how a user brings their OWN
    * gateway (OpenRouter, LiteLLM, Azure, a corporate proxy) or points at a
@@ -36,9 +43,25 @@ function defaultStorage(): LlmSettingsStorage {
 function isCompleteSettings(value: unknown): value is LlmSettings {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  const providerOk = v.provider === "anthropic" || v.provider === "openai" || v.provider === "custom";
+  const providerOk =
+    v.provider === "anthropic" ||
+    v.provider === "openai" ||
+    v.provider === "custom" ||
+    v.provider === "relay";
   if (!providerOk) return false;
   if (typeof v.apiKey !== "string") return false;
+
+  if (v.provider === "relay") {
+    // No key, no model: the local CLI owns both. It needs the pairing details
+    // `skillwright serve` printed, and nothing else.
+    return (
+      typeof v.relayPort === "number" &&
+      Number.isFinite(v.relayPort) &&
+      typeof v.relayToken === "string" &&
+      v.relayToken.length > 0
+    );
+  }
+
   if (typeof v.model !== "string" || v.model.length === 0) return false;
 
   if (v.provider === "custom") {

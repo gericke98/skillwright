@@ -15,7 +15,7 @@ import { renderParamApproval } from "./pipeline/param-view";
 import { renderExport, renderExportStatus } from "./pipeline/export-view";
 import { readLlmSettings, writeLlmSettings } from "./llm/settings";
 import { renderSettings, renderSettingsStatus } from "./llm/settings-view";
-import { createFetchBackend } from "./llm/fetch-backend";
+import { createBackend } from "./llm/backend-factory";
 import { runDistill } from "./pipeline/run-distill";
 import { runParameterize } from "./pipeline/run-parameterize";
 import { runExport } from "./pipeline/run-export";
@@ -133,7 +133,7 @@ function renderDistillNotice(llmError: string): void {
 async function runDistillStage(recordingToDistill: Recording): Promise<void> {
   distillNoticeEl.innerHTML = "";
   const settings = await readLlmSettings();
-  const backend = settings ? createFetchBackend(settings) : undefined;
+  const backend = settings ? createBackend(settings) : undefined;
   const result = await runDistill(recordingToDistill, backend);
   if (!result.usedLlm && result.llmError) {
     // Degraded path is NON-FATAL: surface a notice, but still advance with
@@ -153,7 +153,7 @@ async function runDistillStage(recordingToDistill: Recording): Promise<void> {
 async function runParameterizeStage(recordingToParameterize: Recording): Promise<void> {
   parameterizeEl.innerHTML = "";
   const settings = await readLlmSettings();
-  const backend = settings ? createFetchBackend(settings) : undefined;
+  const backend = settings ? createBackend(settings) : undefined;
   const result = await runParameterize(recordingToParameterize, backend);
 
   // renderParamApproval OWNS the container (it clears it), so the notice has to

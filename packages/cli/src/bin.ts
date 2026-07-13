@@ -286,11 +286,67 @@ async function cmdDoctor(): Promise<void> {
   if (!report.ok) process.exit(1);
 }
 
+/**
+ * `skillwright serve` — lend the extension the CLI's LLM backend.
+ *
+ * The panel can compile skills with a BYO API key, but that puts the key in
+ * browser storage. With `serve` running, the panel sends prompts to localhost
+ * and the CLI answers using the backend it already has (the user's existing
+ * claude/codex auth). No key in the browser, none to create, and nothing sent
+ * anywhere their agent CLI wasn't already sending it.
+ *
+ * Long-lived by design: unlike `run --relay` (a replay session), this stays up
+ * while the user records and compiles.
+ */
+async function cmdServe(argv: string[]): Promise<void> {
+  const portFlag = argv.indexOf("--port");
+  const port = portFlag >= 0 ? Number(argv[portFlag + 1]) : 9333;
+
+  const { createDefaultGenerate } = await import("./llm/factory");
+  const { WsRelayServer } = await import("./relay-server");
+  const { mintToken } = await import("./token");
+
+  let backend: { name: string; generate: (p: string) => Promise<string> };
+  try {
+    backend = createDefaultGenerate();
+  } catch (e) {
+    fail(
+      `${e instanceof Error ? e.message : String(e)}\n` +
+        "  `serve` lends the panel this machine's LLM. Install an agent CLI (claude/codex/gemini)\n" +
+        "  or set SKILLWRIGHT_API_KEY — or skip serve and use a BYO key in the panel's LLM settings.",
+    );
+    return;
+  }
+
+  const token = mintToken();
+  const server = new WsRelayServer({
+    token,
+    port,
+    onGenerate: (prompt) => backend.generate(prompt),
+  });
+  const { url } = await server.start();
+
+  process.stdout.write(
+    `skillwright serve — lending the panel your ${backend.name} backend\n\n` +
+      `  listening: ${url}\n` +
+      `  token:     ${token}\n\n` +
+      `In the side panel's LLM settings, choose "Local skillwright CLI", paste the port and token,\n` +
+      `and save. No API key needed — prompts go to this process, not to a provider from your browser.\n` +
+      `Leave this running while you record. Ctrl-C to stop.\n`,
+  );
+
+  await new Promise(() => {
+    /* serve until interrupted */
+  });
+}
+
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
     case "distill":
       return await cmdDistill(rest);
+    case "serve":
+      return await cmdServe(rest);
     case "run":
       return cmdRun(rest);
     case "promote":
@@ -307,7 +363,7 @@ async function main(): Promise<void> {
       return await cmdDoctor();
     default:
       fail(
-        `unknown command "${cmd ?? ""}". commands: distill, run, promote, install, list, sync, mcp, doctor`,
+        `unknown command "${cmd ?? ""}". commands: distill, serve, run, promote, install, list, sync, mcp, doctor`,
       );
   }
 }

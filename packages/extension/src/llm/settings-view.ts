@@ -20,6 +20,8 @@ const DEFAULT_MODEL: Record<LlmProvider, string> = {
   anthropic: "claude-sonnet-5",
   openai: "gpt-4o",
   custom: "",
+  // The local CLI owns the model choice; the panel doesn't get a say.
+  relay: "",
 };
 
 export function renderSettings(
@@ -32,6 +34,7 @@ export function renderSettings(
   const provider = document.createElement("select");
   provider.id = "llm-provider";
   for (const [value, label] of [
+    ["relay", "Local skillwright CLI (no API key — run `skillwright serve`)"],
     ["anthropic", "Anthropic"],
     ["openai", "OpenAI"],
     ["custom", "Custom / OpenAI-compatible (gateway, proxy, or local model)"],
@@ -53,11 +56,30 @@ export function renderSettings(
   baseUrlRow.id = "llm-base-url-row";
   container.appendChild(baseUrlRow);
 
+  const relayPort = document.createElement("input");
+  relayPort.id = "llm-relay-port";
+  relayPort.type = "number";
+  relayPort.value = String(current?.relayPort ?? 9333);
+  const relayPortRow = labelled("serve port", relayPort);
+  relayPortRow.id = "llm-relay-port-row";
+  container.appendChild(relayPortRow);
+
+  const relayToken = document.createElement("input");
+  relayToken.id = "llm-relay-token";
+  relayToken.type = "text";
+  relayToken.placeholder = "the token skillwright serve printed";
+  relayToken.value = current?.relayToken ?? "";
+  const relayTokenRow = labelled("serve token", relayToken);
+  relayTokenRow.id = "llm-relay-token-row";
+  container.appendChild(relayTokenRow);
+
   const model = document.createElement("input");
   model.id = "llm-model";
   model.type = "text";
   model.value = current?.model ?? DEFAULT_MODEL[provider.value as LlmProvider];
-  container.appendChild(labelled("Model", model));
+  const modelRow = labelled("Model", model);
+  modelRow.id = "llm-model-row";
+  container.appendChild(modelRow);
 
   const apiKey = document.createElement("input");
   apiKey.id = "llm-api-key";
@@ -65,7 +87,9 @@ export function renderSettings(
   // screen while the user records.
   apiKey.type = "password";
   apiKey.value = current?.apiKey ?? "";
-  container.appendChild(labelled("API key", apiKey));
+  const apiKeyRow = labelled("API key", apiKey);
+  apiKeyRow.id = "llm-api-key-row";
+  container.appendChild(apiKeyRow);
 
   const save = document.createElement("button");
   save.id = "llm-save";
@@ -77,10 +101,18 @@ export function renderSettings(
   status.className = "stage-notice";
   container.appendChild(status);
 
-  /** The endpoint field only makes sense for `custom`; the key is optional there. */
+  /** Each provider asks for a different thing — show only what it needs. The
+   *  relay wants pairing details and NO key; custom wants an endpoint. */
   function syncProviderFields(): void {
-    const isCustom = provider.value === "custom";
+    const p = provider.value as LlmProvider;
+    const isCustom = p === "custom";
+    const isRelay = p === "relay";
     baseUrlRow.hidden = !isCustom;
+    relayPortRow.hidden = !isRelay;
+    relayTokenRow.hidden = !isRelay;
+    // The local CLI owns the model and needs no key — don't ask for either.
+    modelRow.hidden = isRelay;
+    apiKeyRow.hidden = isRelay;
     apiKey.placeholder = isCustom ? "(leave empty for a local model)" : "required";
   }
   provider.addEventListener("change", () => {
@@ -97,9 +129,17 @@ export function renderSettings(
       apiKey: apiKey.value.trim(),
       model: model.value.trim(),
     };
-    const url = baseUrl.value.trim();
-    if (settings.provider === "custom") settings.baseUrl = url;
-    else if (url) settings.baseUrl = url;
+    if (settings.provider === "relay") {
+      settings.relayPort = Number(relayPort.value);
+      settings.relayToken = relayToken.value.trim();
+      // No key, no model — the local CLI owns both.
+      settings.apiKey = "";
+      settings.model = "";
+    } else {
+      const url = baseUrl.value.trim();
+      if (settings.provider === "custom") settings.baseUrl = url;
+      else if (url) settings.baseUrl = url;
+    }
 
     const error = validate(settings);
     if (error) {
@@ -115,6 +155,11 @@ export function renderSettings(
 
 /** Mirrors `isCompleteSettings`, but tells the user WHICH field is wrong. */
 function validate(s: LlmSettings): string | undefined {
+  if (s.provider === "relay") {
+    if (!s.relayPort || !Number.isFinite(s.relayPort)) return "Enter the port `skillwright serve` printed.";
+    if (!s.relayToken) return "Paste the token `skillwright serve` printed.";
+    return undefined;
+  }
   if (!s.model) return "Enter a model name.";
   if (s.provider === "custom") {
     if (!s.baseUrl) return "Enter the endpoint URL for your gateway or local model.";
