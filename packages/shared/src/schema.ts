@@ -49,6 +49,12 @@ export interface Step {
   requests?: CapturedRequest[];
   /** For a keydown step: the key pressed (e.g. "Enter"). */
   key?: string;
+  /**
+   * For a keydown step: the modifiers held, as canonical CDP/Playwright names
+   * in a fixed order (["Alt","Control","Meta","Shift"]). Absent when none were
+   * held. Without this a captured Cmd+S shortcut would replay as a bare "s".
+   */
+  modifiers?: string[];
   [key: string]: unknown;
 }
 

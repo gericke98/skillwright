@@ -18,6 +18,8 @@ export interface ReplayStep {
   url?: string;
   /** For keydown steps: the key to press (e.g. "Enter"). */
   key?: string;
+  /** For keydown steps: modifiers held, canonical names in a fixed order. */
+  modifiers?: string[];
   /** The primary network call this step fired — enables API-replay. */
   request?: StepRequest;
 }

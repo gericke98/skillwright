@@ -34,6 +34,9 @@ export function toReplaySteps(recording: Recording): ReplayStep[] {
     if (typeof step.value === "string") out.value = step.value;
     if (typeof step.url === "string") out.url = step.url;
     if (typeof step.key === "string") out.key = step.key;
+    if (Array.isArray(step.modifiers) && step.modifiers.length > 0) {
+      out.modifiers = step.modifiers.filter((m): m is string => typeof m === "string");
+    }
     const request = primaryRequest(step.requests);
     if (request) out.request = request;
     return out;

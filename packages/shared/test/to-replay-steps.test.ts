@@ -38,4 +38,17 @@ describe("toReplaySteps — recording → flat ReplayStep[]", () => {
     const steps = toReplaySteps(rec([{ type: "click", selectors: [["aria/Delete invoice"]] }]));
     expect(steps[0]!.effect).toBe("destructive");
   });
+
+  test("carries a keydown's key AND modifiers (a shortcut must not degrade to a keypress)", () => {
+    const steps = toReplaySteps(
+      rec([{ type: "keydown", selectors: [["aria/Editor"]], key: "s", modifiers: ["Control"] }]),
+    );
+    expect(steps[0]!.key).toBe("s");
+    expect(steps[0]!.modifiers).toEqual(["Control"]);
+  });
+
+  test("omits modifiers entirely when the recording step has none", () => {
+    const steps = toReplaySteps(rec([{ type: "keydown", selectors: [["aria/Search"]], key: "Enter" }]));
+    expect("modifiers" in steps[0]!).toBe(false);
+  });
 });

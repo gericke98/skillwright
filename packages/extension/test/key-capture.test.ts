@@ -28,3 +28,44 @@ describe("buildCaptureStep — keydown records the key", () => {
     expect(step.key).toBe("Enter");
   });
 });
+
+/**
+ * The shortcut case `shouldCaptureKey` deliberately opts into: without the
+ * modifiers, Cmd+S records as a bare "s" and replay TYPES an "s" into the page
+ * instead of saving. Capture is the only place that can see them.
+ */
+describe("buildCaptureStep — keydown records the modifiers (shortcut fidelity)", () => {
+  function stepFor(mods: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean; shiftKey?: boolean }) {
+    document.body.innerHTML = '<input aria-label="Search">';
+    return buildCaptureStep(document.querySelector("input")!, "keydown", () => 0, "s", mods);
+  }
+
+  test("Ctrl+S records the Control modifier alongside the key", () => {
+    const step = stepFor({ ctrlKey: true });
+    expect(step.key).toBe("s");
+    expect(step.modifiers).toEqual(["Control"]);
+  });
+
+  test("uses the canonical CDP/Playwright names (Meta, not Cmd)", () => {
+    expect(stepFor({ metaKey: true }).modifiers).toEqual(["Meta"]);
+  });
+
+  test("multiple modifiers come out in a fixed order (Alt, Control, Meta, Shift)", () => {
+    const step = stepFor({ shiftKey: true, ctrlKey: true, altKey: true, metaKey: true });
+    expect(step.modifiers).toEqual(["Alt", "Control", "Meta", "Shift"]);
+  });
+
+  test("a plain Enter carries NO modifiers key (don't bloat every recording)", () => {
+    document.body.innerHTML = '<input aria-label="Search">';
+    const step = buildCaptureStep(document.querySelector("input")!, "keydown", () => 0, "Enter", {});
+    expect("modifiers" in step).toBe(false);
+  });
+
+  test("a non-keydown action never records modifiers", () => {
+    document.body.innerHTML = '<button aria-label="Save">Save</button>';
+    const step = buildCaptureStep(document.querySelector("button")!, "click", () => 0, undefined, {
+      ctrlKey: true,
+    });
+    expect("modifiers" in step).toBe(false);
+  });
+});

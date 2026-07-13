@@ -103,17 +103,102 @@ interface PerformInput {
   selector: string;
   value?: string;
   key?: string;
+  modifiers?: string[];
 }
 
-const VIRTUAL_KEYS: Record<string, number> = {
-  Enter: 13,
-  Escape: 27,
-  Tab: 9,
-  ArrowUp: 38,
-  ArrowDown: 40,
-  ArrowLeft: 37,
-  ArrowRight: 39,
+/** Named keys: physical `code` + Windows virtual key code. */
+const NAMED_KEYS: Record<string, { code: string; vk: number }> = {
+  Enter: { code: "Enter", vk: 13 },
+  Escape: { code: "Escape", vk: 27 },
+  Tab: { code: "Tab", vk: 9 },
+  Backspace: { code: "Backspace", vk: 8 },
+  Delete: { code: "Delete", vk: 46 },
+  ArrowUp: { code: "ArrowUp", vk: 38 },
+  ArrowDown: { code: "ArrowDown", vk: 40 },
+  ArrowLeft: { code: "ArrowLeft", vk: 37 },
+  ArrowRight: { code: "ArrowRight", vk: 39 },
 };
+
+export interface KeyEventFields {
+  key: string;
+  code: string;
+  windowsVirtualKeyCode: number;
+  /** Only for keys that produce input. Enter needs "\r" or forms don't submit. */
+  text?: string;
+}
+
+/**
+ * CDP key-event fields for a captured key.
+ *
+ * `code` is the PHYSICAL key ("KeyS"), distinct from the logical `key` ("s") —
+ * dispatching a shortcut with `code: "s"` (as the old table did) produces an
+ * event real apps ignore, because no such physical code exists.
+ *
+ * Total: an unrecognized key degrades to vk 0 rather than throwing.
+ */
+export function keyEventFields(key: string): KeyEventFields {
+  const named = NAMED_KEYS[key];
+  if (named) {
+    const fields: KeyEventFields = { key, code: named.code, windowsVirtualKeyCode: named.vk };
+    // Enter's text is what actually triggers form submission / newline insert.
+    if (key === "Enter") fields.text = "\r";
+    return fields;
+  }
+  if (/^[a-zA-Z]$/.test(key)) {
+    const upper = key.toUpperCase();
+    return { key, code: `Key${upper}`, windowsVirtualKeyCode: upper.charCodeAt(0) };
+  }
+  if (/^[0-9]$/.test(key)) {
+    return { key, code: `Digit${key}`, windowsVirtualKeyCode: key.charCodeAt(0) };
+  }
+  return { key, code: "", windowsVirtualKeyCode: 0 };
+}
+
+/** CDP modifier bitmask. */
+const MODIFIER_BITS: Record<string, number> = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
+
+/** OR the CDP modifier bits. Unknown names contribute nothing (never NaN). */
+export function modifierMask(modifiers: string[] = []): number {
+  return modifiers.reduce((mask, m) => mask | (MODIFIER_BITS[m] ?? 0), 0);
+}
+
+export interface KeyDispatchEvent extends KeyEventFields {
+  type: "keyDown" | "rawKeyDown" | "keyUp";
+  nativeVirtualKeyCode: number;
+  modifiers: number;
+  /** Passed straight to `chrome.debugger.sendCommand`, which takes a bag. */
+  [key: string]: unknown;
+}
+
+/**
+ * The exact `Input.dispatchKeyEvent` sequence for one captured keypress.
+ *
+ * Two rules, both load-bearing (and both what Chrome's own tooling does):
+ *  - `text` is what makes a key INSERT something. Enter without `text: "\r"`
+ *    doesn't submit a form.
+ *  - A key held with any non-Shift modifier is a SHORTCUT, not text: its
+ *    `text` must be dropped, or Ctrl+S both fires the shortcut AND types an
+ *    "s" into the page. (Shift is exempt — Shift+A is genuinely "A".)
+ *
+ * The event type follows from that: `keyDown` when the press produces text,
+ * `rawKeyDown` when it doesn't.
+ */
+export function keyDispatchEvents(key: string, modifiers: string[] = []): KeyDispatchEvent[] {
+  const fields = keyEventFields(key);
+  const mask = modifierMask(modifiers);
+  const SHIFT = 8;
+  const text = mask & ~SHIFT ? undefined : fields.text;
+  const base = {
+    ...fields,
+    text,
+    nativeVirtualKeyCode: fields.windowsVirtualKeyCode,
+    modifiers: mask,
+  };
+  return [
+    { ...base, type: text ? "keyDown" : "rawKeyDown" },
+    { ...base, type: "keyUp" },
+  ];
+}
 
 async function performStep(
   tabId: number,
@@ -167,11 +252,9 @@ async function performStep(
     if (cmd.action === "keydown") {
       const focused = (await evaluate(tabId, focusExpression(cmd.selector))) === true;
       if (!focused) return { ok: false, error: "element not found" };
-      const key = cmd.key || "Enter";
-      const vk = VIRTUAL_KEYS[key] ?? 0;
-      const base = { key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
-      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", { type: "keyDown", ...base });
-      await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", { type: "keyUp", ...base });
+      for (const event of keyDispatchEvents(cmd.key || "Enter", cmd.modifiers)) {
+        await chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", event);
+      }
       return { ok: true };
     }
     if (cmd.action === "navigate") return { ok: true };

@@ -51,7 +51,7 @@ function onKeydown(event: KeyboardEvent): void {
   const target = eventTarget(event);
   if (!target) return;
   try {
-    send({ kind: "step", step: buildCaptureStep(target, "keydown", undefined, event.key) });
+    send({ kind: "step", step: buildCaptureStep(target, "keydown", undefined, event.key, event) });
   } catch {
     /* never let capture break the page */
   }

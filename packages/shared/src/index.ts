@@ -59,6 +59,7 @@ export {
   type Critique,
 } from "./parameterize";
 export { applyParamsToSkill } from "./parameterize/apply-to-skill";
+export { playwrightChord } from "./key-chord";
 export { toSlug } from "./slug";
 export { stepLabel } from "./step-label";
 export { toReplaySteps } from "./to-replay-steps";
