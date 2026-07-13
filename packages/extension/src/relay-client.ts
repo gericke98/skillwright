@@ -37,6 +37,14 @@ function existsExpression(selector: string): string {
   })()`;
 }
 
+/** Expression returning the element ITSELF (for `returnByValue: false` → objectId). */
+export function elementRefExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    return resolveElement(${JSON.stringify(selector)}, document);
+  })()`;
+}
+
 /** Expression that focuses `selector`; returns true on success. */
 function focusExpression(selector: string): string {
   return `(() => {
@@ -56,8 +64,8 @@ export function fillExpression(selector: string, value: string): string {
     if (!el) return false;
     el.focus();
     // A file input can't be set from page JS (assigning .value throws a
-    // SecurityError) — the relay can't upload files in v1; use the --cdp path,
-    // which drives setInputFiles. Fail cleanly rather than throwing.
+    // SecurityError). performStep routes files to DOM.setFileInputFiles before
+    // reaching here, so this is only a defensive floor: fail, never throw.
     if (el.type === "file") return false;
     // A checkbox/radio carries its meaning in .checked, not .value — capture
     // records the boolean state ("true"/"false"), so drive .checked here.
@@ -71,6 +79,53 @@ export function fillExpression(selector: string, value: string): string {
     }
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`;
+}
+
+/**
+ * Expression: which replay strategy `selector` needs.
+ *
+ *  - "file"   → only CDP can set it (page JS assigning .value throws SecurityError)
+ *  - "toggle" → checkbox/radio: meaning lives in .checked, not text
+ *  - "select" → <select>: an option must be chosen, not typed
+ *  - "text"   → a real text field / contenteditable: TYPE it via Input.insertText
+ *               so the page sees genuine input events (React's value tracker
+ *               ignores a raw .value assignment, so JS-filled forms submit empty)
+ *  - null     → not found
+ */
+export function elementKindExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    const el = resolveElement(${JSON.stringify(selector)}, document);
+    if (!el) return null;
+    if (el.type === "file") return "file";
+    if (el.type === "checkbox" || el.type === "radio") return "toggle";
+    if (el.tagName === "SELECT") return "select";
+    return "text";
+  })()`;
+}
+
+/**
+ * Expression that focuses `selector` and SELECTS its existing content, so a
+ * following `Input.insertText` replaces the old value instead of appending to
+ * it. Returns true on success.
+ */
+export function focusAndSelectAllExpression(selector: string): string {
+  return `(() => {
+    const resolveElement = ${resolveElement.toString()};
+    const el = resolveElement(${JSON.stringify(selector)}, document);
+    if (!el) return false;
+    el.focus();
+    if (typeof el.select === "function") {
+      el.select();
+    } else if (el.isContentEditable) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     return true;
   })()`;
 }
@@ -200,7 +255,7 @@ export function keyDispatchEvents(key: string, modifiers: string[] = []): KeyDis
   ];
 }
 
-async function performStep(
+export async function performStep(
   tabId: number,
   cmd: PerformInput,
 ): Promise<{ ok: boolean; error?: string; url?: string; aria?: string }> {
@@ -246,7 +301,39 @@ async function performStep(
       return { ok: true };
     }
     if (cmd.action === "change" || cmd.action === "input" || cmd.action === "select") {
-      const ok = (await evaluate(tabId, fillExpression(cmd.selector, cmd.value ?? ""))) === true;
+      const value = cmd.value ?? "";
+      const kind = (await evaluate(tabId, elementKindExpression(cmd.selector))) as string | null;
+      if (kind === null) return { ok: false, error: "element not found" };
+
+      if (kind === "file") {
+        // A file input can only be set through CDP: page JS assigning .value
+        // throws SecurityError. Resolve the element BY REFERENCE (objectId,
+        // not by value) and hand that to DOM.setFileInputFiles.
+        const res = (await chrome.debugger.sendCommand({ tabId }, "Runtime.evaluate", {
+          expression: elementRefExpression(cmd.selector),
+          returnByValue: false,
+        })) as { result?: { objectId?: string } };
+        const objectId = res?.result?.objectId;
+        if (!objectId) return { ok: false, error: "element not found" };
+        await chrome.debugger.sendCommand({ tabId }, "DOM.setFileInputFiles", {
+          objectId,
+          files: [value],
+        });
+        return { ok: true };
+      }
+
+      if (kind === "text") {
+        // TYPE it: Input.insertText produces real input events. A raw .value
+        // assignment is invisible to React's value tracker, so a JS-filled
+        // form submits empty — the exact failure the relay used to have.
+        const focused = (await evaluate(tabId, focusAndSelectAllExpression(cmd.selector))) === true;
+        if (!focused) return { ok: false, error: "element not found" };
+        await chrome.debugger.sendCommand({ tabId }, "Input.insertText", { text: value });
+        return { ok: true };
+      }
+
+      // toggle / select: state, not text — the JS path is correct for these.
+      const ok = (await evaluate(tabId, fillExpression(cmd.selector, value))) === true;
       return { ok, error: ok ? undefined : "element not found" };
     }
     if (cmd.action === "keydown") {

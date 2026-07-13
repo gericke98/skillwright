@@ -64,17 +64,19 @@ skillwright run approve-invoice --input invoice_number=INV-2042
 skillwright run attach-receipt  --input file=/abs/path/receipt.pdf
 ```
 
-File uploads work on the **`--cdp`** path (via `setInputFiles`). The relay path
-can't set a file input from page JS in v1 — use `--cdp` for upload flows.
+File uploads work on **both** paths: `--cdp` via `setInputFiles`, and the relay
+via `DOM.setFileInputFiles` (page JS can't set a file input, so the relay drives
+it through CDP instead).
 
 ## 5. Relay vs. `--cdp`
 
 - **Relay** (`skillwright relay`, pair in the side panel) — drives your real,
-  already-authenticated Chrome. Best for tasks behind a login. Limitation: no
-  file upload, and cross-origin iframes aren't reachable from the in-page relay.
+  already-authenticated Chrome. Best for tasks behind a login. Handles file
+  upload (through CDP). Limitation: cross-origin iframes aren't reachable from
+  the in-page relay resolver.
 - **`--cdp <url>`** — attach to a debug-profile Chrome (`--remote-debugging-port`)
-  or CI Chromium. Supports file upload and cross-origin iframes (Playwright
-  bypasses the same-origin boundary). Set `CHROME_CDP_URL` to skip the flag.
+  or CI Chromium. Also reaches cross-origin iframes (Playwright bypasses the
+  same-origin boundary). Set `CHROME_CDP_URL` to skip the flag.
 
 ## 6. Safety
 
